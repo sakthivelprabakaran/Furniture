@@ -1,0 +1,20 @@
+{
+  "name": "3d-parametric-furniture-studio",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Modular 3D Furniture & Plant Stand System with Technical Drawings, Blueprint Exporter, and iPhone WebAR",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py",
+    "test": "node test/grid_verification.test.js && node test/moduwall_verification.test.js"
+  },
+  "keywords": [
+    "threejs",
+    "parametric-design",
+    "furniture-studio",
+    "webar",
+    "usdz-exporter"
+  ],
+  "author": "Sakthivel Prabakaran",
+  "license": "MIT"
+}
