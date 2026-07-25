@@ -1,12 +1,12 @@
 /**
- * Automated Unit Test Suite: MODUPLANT Connector Ports & Capping Logic
- * Verifies exact Capping & Extension Port topology across staggered wings and user extension toggles.
+ * Automated Unit Test Suite: Independent Extension Toggles Verification
+ * Tests that extendLeftPort, extendRightPort, and extendTopPort act 100% independently on their respective ports.
  */
 
 import { ProductTemplates } from '../js/engine/ProductTemplates.js';
 
-function runConnectorCappingUnitTests() {
-  console.log('🧪 Running Comprehensive CONNECTOR PORTS & CAPPING Logic Unit Tests...\n');
+function testIndependentExtensionToggles() {
+  console.log('🧪 Testing Independent Extension Toggles (Left, Right, Top)...\n');
 
   const template = ProductTemplates.getTemplate('moduplant_infinite');
 
@@ -16,86 +16,85 @@ function runConnectorCappingUnitTests() {
       mergedParams[k] = v.value;
     }
     Object.assign(mergedParams, params);
-    return { graph: template.buildGraph(mergedParams), params: mergedParams };
+    return template.buildGraph(mergedParams);
   }
 
   let passedAll = true;
 
-  // TEST CASE 1: User's exact scenario: Center 3 Tiers, Left 2 Tiers, Right 2 Tiers, extendLeftPort=true, extendRightPort=true
-  console.log('📋 Test Case 1: Center 3, Left 2, Right 2 with extendLeftPort=true & extendRightPort=true');
-  const { graph: g1 } = getGraphFor({
-    centerTiers: 3,
-    hasLeftWing: true, leftTiers: 2,
-    hasRightWing: true, rightTiers: 2,
-    extendLeftPort: true, extendRightPort: true
+  // Scenario: Center 3 Tiers, Left 2 Tiers, Right 2 Tiers
+  // Column X Positions:
+  // - Left Wing outer post: x = -340
+  // - Left/Center post: x = 0
+  // - Center/Right post: x = 340
+  // - Right Wing outer post: x = 680
+
+  // -------------------------------------------------------------
+  // TEST 1: ONLY extendLeftPort = true (Right and Top are FALSE)
+  // -------------------------------------------------------------
+  console.log('📋 Test 1: ONLY extendLeftPort=true');
+  const g1 = getGraphFor({
+    centerTiers: 3, hasLeftWing: true, leftTiers: 2, hasRightWing: true, rightTiers: 2,
+    extendLeftPort: true, extendRightPort: false, extendTopPort: false
   });
 
-  // Center Tower at Tier 3 is at y = 3 * 270 = 810.
-  // Left post of Center Tower is x = 0, Right post is x = 340.
-  // At Tier 3 (y=810), x=0 connector faces left (-X). Since extendLeftPort=true, nx MUST BE OPEN!
-  // At Tier 3 (y=810), x=340 connector faces right (+X). Since extendRightPort=true, px MUST BE OPEN!
-
-  const connCenterTopLeft = g1.connectors.find(c => Math.abs(c.position[0] - 0) < 5 && Math.abs(c.position[1] - 810) < 5 && c.position[2] === 0);
-  const connCenterTopRight = g1.connectors.find(c => Math.abs(c.position[0] - 340) < 5 && Math.abs(c.position[1] - 810) < 5 && c.position[2] === 0);
-
-  if (!connCenterTopLeft || !connCenterTopLeft.openPorts.nx) {
-    console.error('  ❌ FAILED: Center Tower Tier 3 Left Connector (-X) should be OPEN when extendLeftPort=true!');
+  // Check 1.1: Left Wing outer post at Tier 2 (x=-340, y=540): -X port MUST be OPEN!
+  const connLeftWingTop = g1.connectors.find(c => Math.abs(c.position[0] - (-340)) < 5 && Math.abs(c.position[1] - 540) < 5 && c.position[2] === 0);
+  if (!connLeftWingTop || !connLeftWingTop.openPorts.nx) {
+    console.error('  ❌ FAILED: Left Wing Top Connector (-X) should be OPEN when extendLeftPort=true!');
     passedAll = false;
   } else {
-    console.log('  ✅ Center Tower Tier 3 Left Connector (-X port) is OPEN correctly.');
+    console.log('  ✅ Left Wing Top Connector (-X port) is OPEN correctly.');
   }
 
-  if (!connCenterTopRight || !connCenterTopRight.openPorts.px) {
-    console.error('  ❌ FAILED: Center Tower Tier 3 Right Connector (+X) should be OPEN when extendRightPort=true!');
+  // Check 1.2: Left Wing outer post at Tier 2 (x=-340, y=540): +Y port MUST be CAPPED (since extendTopPort=false)!
+  if (connLeftWingTop && connLeftWingTop.openPorts.py) {
+    console.error('  ❌ FAILED: Left Wing Top Connector (+Y) should be CAPPED when extendTopPort=false!');
     passedAll = false;
   } else {
-    console.log('  ✅ Center Tower Tier 3 Right Connector (+X port) is OPEN correctly.');
+    console.log('  ✅ Left Wing Top Connector (+Y port) is CAPPED correctly.');
   }
 
-  // TEST CASE 2: When extension toggles are FALSE, Center Tower Tier 3 facing left (no Left Wing Tier 3) MUST be CAPPED!
-  console.log('\n📋 Test Case 2: Center 3, Left 2, Right 2 with extendLeftPort=false & extendRightPort=false');
-  const { graph: g2 } = getGraphFor({
-    centerTiers: 3,
-    hasLeftWing: true, leftTiers: 2,
-    hasRightWing: true, rightTiers: 2,
-    extendLeftPort: false, extendRightPort: false
+  // Check 1.3: Right Wing outer post at Tier 2 (x=680, y=540): +X port MUST be CAPPED (since extendRightPort=false)!
+  const connRightWingTop = g1.connectors.find(c => Math.abs(c.position[0] - 680) < 5 && Math.abs(c.position[1] - 540) < 5 && c.position[2] === 0);
+  if (connRightWingTop && connRightWingTop.openPorts.px) {
+    console.error('  ❌ FAILED: Right Wing Top Connector (+X) should be CAPPED when extendRightPort=false!');
+    passedAll = false;
+  } else {
+    console.log('  ✅ Right Wing Top Connector (+X port) is CAPPED correctly.');
+  }
+
+  // -------------------------------------------------------------
+  // TEST 2: ONLY extendTopPort = true (Left and Right are FALSE)
+  // -------------------------------------------------------------
+  console.log('\n📋 Test 2: ONLY extendTopPort=true');
+  const g2 = getGraphFor({
+    centerTiers: 3, hasLeftWing: true, leftTiers: 2, hasRightWing: true, rightTiers: 2,
+    extendLeftPort: false, extendRightPort: false, extendTopPort: true
   });
 
-  const connCappedLeft = g2.connectors.find(c => Math.abs(c.position[0] - 0) < 5 && Math.abs(c.position[1] - 810) < 5 && c.position[2] === 0);
-  const connCappedRight = g2.connectors.find(c => Math.abs(c.position[0] - 340) < 5 && Math.abs(c.position[1] - 810) < 5 && c.position[2] === 0);
-
-  if (connCappedLeft && connCappedLeft.openPorts.nx) {
-    console.error('  ❌ FAILED: Center Tower Tier 3 Left Connector (-X) should be CAPPED when extendLeftPort=false!');
+  // Check 2.1: Left Wing Top Connector (x=-340, y=540): +Y port MUST be OPEN!
+  const connLeftTop2 = g2.connectors.find(c => Math.abs(c.position[0] - (-340)) < 5 && Math.abs(c.position[1] - 540) < 5 && c.position[2] === 0);
+  if (!connLeftTop2 || !connLeftTop2.openPorts.py) {
+    console.error('  ❌ FAILED: Left Wing Top Connector (+Y) should be OPEN when extendTopPort=true!');
     passedAll = false;
   } else {
-    console.log('  ✅ Center Tower Tier 3 Left Connector (-X port) is CAPPED correctly.');
+    console.log('  ✅ Left Wing Top Connector (+Y port) is OPEN correctly.');
   }
 
-  if (connCappedRight && connCappedRight.openPorts.px) {
-    console.error('  ❌ FAILED: Center Tower Tier 3 Right Connector (+X) should be CAPPED when extendRightPort=false!');
+  // Check 2.2: Left Wing Top Connector (x=-340, y=540): -X port MUST be CAPPED (since extendLeftPort=false)!
+  if (connLeftTop2 && connLeftTop2.openPorts.nx) {
+    console.error('  ❌ FAILED: Left Wing Top Connector (-X) should be CAPPED when extendLeftPort=false!');
     passedAll = false;
   } else {
-    console.log('  ✅ Center Tower Tier 3 Right Connector (+X port) is CAPPED correctly.');
-  }
-
-  // TEST CASE 3: Top Extension Toggle (extendTopPort=true)
-  console.log('\n📋 Test Case 3: Top Extension Toggle (extendTopPort=true)');
-  const { graph: g3 } = getGraphFor({ centerTiers: 3, extendTopPort: true });
-  const connTopCenter = g3.connectors.find(c => Math.abs(c.position[1] - 810) < 5 && c.position[2] === 0);
-
-  if (!connTopCenter || !connTopCenter.openPorts.py) {
-    console.error('  ❌ FAILED: Top Connector (+Y) should be OPEN when extendTopPort=true!');
-    passedAll = false;
-  } else {
-    console.log('  ✅ Top Connector (+Y port) is OPEN correctly.');
+    console.log('  ✅ Left Wing Top Connector (-X port) is CAPPED correctly when extendLeftPort=false.');
   }
 
   console.log('\n----------------------------------------');
   if (passedAll) {
-    console.log('🎉 ALL CONNECTOR PORTS & CAPPING UNIT TESTS PASSED PERFECTLY!');
+    console.log('🎉 ALL INDEPENDENT TOGGLE UNIT TESTS PASSED PERFECTLY!');
   } else {
-    console.error('💥 UNIT TESTS FAILED — Logic Fixes Required!');
+    console.error('💥 UNIT TESTS FAILED — Logic Refinements Required!');
   }
 }
 
-runConnectorCappingUnitTests();
+testIndependentExtensionToggles();
