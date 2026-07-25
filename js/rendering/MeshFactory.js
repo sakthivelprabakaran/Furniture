@@ -25,8 +25,7 @@ export class MeshFactory {
       capMesh.position.y = socketLength;
       tubeGroup.add(capMesh);
     } else {
-      // True Hollow 3D Sleeve Shell (Outer cylinder with hollow inner bore)
-      const wallThickness = outerRadius - dowelRadius;
+      // True Hollow 3D Sleeve Shell
       const boreRadius = dowelRadius + 0.4; // Clearance fit (+0.4mm)
 
       const shape = new THREE.Shape();
@@ -61,48 +60,59 @@ export class MeshFactory {
   }
 
   /**
-   * Create Practical 3D Printed 3-Way Corner Connector (Symmetrical Top & Bottom Sleeves!)
+   * Create Directional 3D Printed 3-Way Corner Connector (Sockets Orient Inward along Rails!)
    */
-  create3WayCornerConnector(dowelDiameter, colorType, openPorts = { x: true, y: true, ny: true, z: true }) {
+  create3WayCornerConnector(dowelDiameter, colorType, openPorts = {}, cornerType = 'front_left') {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 5.5; // Practical 5.5mm wall thickness
-    const socketLength = 35.0; // Practical 35mm insertion sleeve
+    const outerRadius = dowelRadius + 5.5;
+    const socketLength = 35.0;
 
     // Central Core Sphere
     const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.12, 24, 24);
     const sphereMesh = new THREE.Mesh(sphereGeo, mat);
     group.add(sphereMesh);
 
-    // Socket +X (Right)
-    const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.x);
-    sockPX.rotation.z = -Math.PI / 2;
-    group.add(sockPX);
-
     // Socket +Y (Top Vertical Sleeve)
-    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.y);
+    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
     group.add(sockPY);
 
-    // Socket -Y (Bottom Vertical Sleeve — FIXED!)
+    // Socket -Y (Bottom Vertical Sleeve)
     const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
     sockNY.rotation.x = Math.PI;
     group.add(sockNY);
 
-    // Socket +Z (Front)
-    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.z);
-    sockPZ.rotation.x = Math.PI / 2;
-    group.add(sockPZ);
+    // Directional Horizontal Sockets based on corner position
+    // xDir: +1 for right, -1 for left
+    // zDir: +1 for back, -1 for front
+    let xDir = 1;
+    let zDir = 1;
+
+    if (cornerType === 'front_right' || cornerType === 'back_right') xDir = -1;
+    if (cornerType === 'back_left' || cornerType === 'back_right') zDir = -1;
+
+    // Horizontal X Sleeve (Frame Rail along X)
+    const isXCapped = xDir > 0 ? !openPorts.px : !openPorts.nx;
+    const sockX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isXCapped);
+    sockX.rotation.z = xDir > 0 ? -Math.PI / 2 : Math.PI / 2;
+    group.add(sockX);
+
+    // Depth Z Sleeve (Frame Rail along Z)
+    const isZCapped = zDir > 0 ? !openPorts.pz : !openPorts.nz;
+    const sockZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isZCapped);
+    sockZ.rotation.x = zDir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    group.add(sockZ);
 
     group.userData = { partType: '3way_connector' };
     return group;
   }
 
   /**
-   * Create Practical 3D Printed 4-Way Cross Connector (Symmetrical Top & Bottom Sleeves!)
+   * Create Directional 3D Printed 4-Way Cross Connector
    */
-  create4WayCrossConnector(dowelDiameter, colorType, openPorts = { px: true, nx: true, py: true, ny: true, pz: true }) {
+  create4WayCrossConnector(dowelDiameter, colorType, openPorts = {}, cornerType = 'front') {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
@@ -124,19 +134,21 @@ export class MeshFactory {
     sockNX.rotation.z = Math.PI / 2;
     group.add(sockNX);
 
-    // +Y (Top Vertical Sleeve)
+    // +Y (Top)
     const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
     group.add(sockPY);
 
-    // -Y (Bottom Vertical Sleeve — FIXED!)
+    // -Y (Bottom)
     const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
     sockNY.rotation.x = Math.PI;
     group.add(sockNY);
 
-    // +Z (Front)
-    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.pz);
-    sockPZ.rotation.x = Math.PI / 2;
-    group.add(sockPZ);
+    // Z Depth Sleeve (Inward along depth rail)
+    const zDir = (cornerType === 'back' || cornerType === 'back_middle') ? -1 : 1;
+    const isZCapped = zDir > 0 ? !openPorts.pz : !openPorts.nz;
+    const sockZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isZCapped);
+    sockZ.rotation.x = zDir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    group.add(sockZ);
 
     group.userData = { partType: '4way_connector' };
     return group;
@@ -502,7 +514,7 @@ export class MeshFactory {
       }
     }
 
-    // 2. Build MDF Shelf Panels (Clean Insert Platforms!)
+    // 2. Build MDF Shelf Panels
     if (graph.mdfShelves) {
       for (const shelf of graph.mdfShelves) {
         const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material);
@@ -514,14 +526,14 @@ export class MeshFactory {
       }
     }
 
-    // 3. Build Practical 3D Printed Connectors
+    // 3. Build Directional 3D Printed Connectors
     if (graph.connectors) {
       for (const conn of graph.connectors) {
         let mesh;
         if (conn.type === '3way') {
-          mesh = this.create3WayCornerConnector(conn.diameter, conn.color, conn.openPorts);
+          mesh = this.create3WayCornerConnector(conn.diameter, conn.color, conn.openPorts, conn.cornerType);
         } else if (conn.type === '4way') {
-          mesh = this.create4WayCrossConnector(conn.diameter, conn.color, conn.openPorts);
+          mesh = this.create4WayCrossConnector(conn.diameter, conn.color, conn.openPorts, conn.cornerType);
         } else if (conn.type === '5way') {
           mesh = this.create5WayHubConnector(conn.diameter, conn.color, conn.openPorts);
         } else {

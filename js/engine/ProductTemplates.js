@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Symmetrical Top & Bottom Socket Sleeves!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -82,7 +82,7 @@ const ALL_PRODUCTS = [
           gridConnectors.set(getCoordKey(b, t, false), { x: xPos, y: yPos, z: 0, b, t, isBack: false, maxColT: colTiers });
           gridConnectors.set(getCoordKey(b, t, true), { x: xPos, y: yPos, z: bayD, b, t, isBack: true, maxColT: colTiers });
 
-          // Vertical Dowel Leg (Offset cleanly to prevent Z-fighting clipping!)
+          // Vertical Dowel Leg
           if (t > 0) {
             const rodLen = tH - 2 * socketOffset;
             const midY = yPos - tH / 2;
@@ -116,7 +116,7 @@ const ALL_PRODUCTS = [
         for (let t = 1; t <= bTiers; t++) {
           const yPos = t * tH;
 
-          // 1. Front Horizontal Perimeter Rail (Offset length cleanly!)
+          // 1. Front Horizontal Perimeter Rail
           graph.dowelRods.push({
             id: `rod_h_x_front_b${b}_t${t}`,
             position: [xMid, yPos, 0],
@@ -159,7 +159,7 @@ const ALL_PRODUCTS = [
             });
           }
 
-          // 4. CLEAN MDF SHELF INSERT PANEL
+          // 4. CLEAN MDF SHELF INSERT PANEL (Seated flush on perimeter frame!)
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + 6, bayD / 2],
@@ -181,7 +181,7 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // Practical 3D Printed Connector Logic with Top & Bottom Socket Sleeves
+      // Directional 3D Printed Connector Placement with Exact Corner Type
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
 
@@ -193,8 +193,9 @@ const ALL_PRODUCTS = [
           px: true,
           nx: true,
           py: true,
-          ny: true, // Symmetrical Bottom Vertical Sleeve (+Y and -Y both active!)
-          pz: true
+          ny: true,
+          pz: true,
+          nz: true
         };
 
         if (isLeftBoundary) {
@@ -209,6 +210,13 @@ const ALL_PRODUCTS = [
           openPorts.py = p.extendTopPort;
         }
 
+        // Determine specific Corner Type for directional socket alignment
+        let cornerType = 'front_left';
+        if (isRightBoundary && !node.isBack) cornerType = 'front_right';
+        else if (isLeftBoundary && node.isBack) cornerType = 'back_left';
+        else if (isRightBoundary && node.isBack) cornerType = 'back_right';
+        else if (node.isBack) cornerType = 'back';
+
         let connType = '3way';
         if (isBottom) {
           connType = 'foot';
@@ -222,7 +230,8 @@ const ALL_PRODUCTS = [
           position: [node.x, node.y, node.z],
           diameter: dowelDia,
           color: p.connectorColor,
-          openPorts: openPorts
+          openPorts: openPorts,
+          cornerType: cornerType
         });
       }
 
