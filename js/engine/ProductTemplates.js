@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Corner-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Square L-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -119,7 +119,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. Horizontal X-Rails & CORNER-NOTCHED MDF SHELVES (Seated Flat On Dowels!)
+      // 2. Horizontal X-Rails & SQUARE L-NOTCHED MDF SHELVES (Seated Flat On Dowels!)
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -149,7 +149,7 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // CORNER-NOTCHED MDF SHELF PANEL (Rests flat on top of the 4 perimeter dowels!)
+          // SQUARE L-NOTCHED MDF SHELF PANEL (Rests flat on top of the 4 perimeter dowels!)
           // Bottom surface is at yPos + dowelRad (e.g. yPos + 11mm)
           const panelThickness = 12;
           graph.mdfShelves.push({
@@ -158,7 +158,7 @@ const ALL_PRODUCTS = [
             width: bayW,
             depth: bayD,
             thickness: panelThickness,
-            notchRadius: dowelRad + 5.5 + 0.5, // Outer socket sleeve radius + 0.5mm clearance
+            notchSize: 24.5, // 24.5mm clean square L-cutout at all 4 corners!
             dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });

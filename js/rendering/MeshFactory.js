@@ -225,42 +225,47 @@ export class MeshFactory {
   }
 
   /**
-   * Create Corner-Notched MDF Shelf Panel (With 4 Rounded Quarter-Circle Corner Cutouts!)
+   * Create Practical Corner-Notched MDF Shelf Panel (With 4 Clean Square L-Shaped Cutouts!)
    */
-  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural', notchRadius = 17.5) {
+  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural', notchSize = 25.0) {
     const mat = this.materials.getMaterial(materialType);
 
     const w2 = width / 2;
     const d2 = depth / 2;
-    const r = notchRadius;
+    const nx = notchSize;
+    const nz = notchSize;
 
-    // 2D Profile with 4 Inverted Quarter-Circle Corner Cutouts
+    // 2D Profile with 4 Clean Rectangular L-Notches at all 4 corners
     const shape = new THREE.Shape();
 
-    // Top Edge
-    shape.moveTo(-w2 + r, d2);
-    shape.lineTo(w2 - r, d2);
+    // 1. Top Edge
+    shape.moveTo(-w2 + nx, d2);
+    shape.lineTo(w2 - nx, d2);
 
-    // Top-Right Corner Cutout Arc around (w2, d2)
-    shape.absarc(w2, d2, r, Math.PI, 1.5 * Math.PI, false);
+    // 2. Top-Right L-Notch
+    shape.lineTo(w2 - nx, d2 - nz);
+    shape.lineTo(w2, d2 - nz);
 
-    // Right Edge
-    shape.lineTo(w2, -d2 + r);
+    // 3. Right Edge
+    shape.lineTo(w2, -d2 + nz);
 
-    // Bottom-Right Corner Cutout Arc around (w2, -d2)
-    shape.absarc(w2, -d2, r, 0.5 * Math.PI, Math.PI, false);
+    // 4. Bottom-Right L-Notch
+    shape.lineTo(w2 - nx, -d2 + nz);
+    shape.lineTo(w2 - nx, -d2);
 
-    // Bottom Edge
-    shape.lineTo(-w2 + r, -d2);
+    // 5. Bottom Edge
+    shape.lineTo(-w2 + nx, -d2);
 
-    // Bottom-Left Corner Cutout Arc around (-w2, -d2)
-    shape.absarc(-w2, -d2, r, 0, 0.5 * Math.PI, false);
+    // 6. Bottom-Left L-Notch
+    shape.lineTo(-w2 + nx, -d2 + nz);
+    shape.lineTo(-w2, -d2 + nz);
 
-    // Left Edge
-    shape.lineTo(-w2, d2 - r);
+    // 7. Left Edge
+    shape.lineTo(-w2, d2 - nz);
 
-    // Top-Left Corner Cutout Arc around (-w2, d2)
-    shape.absarc(-w2, d2, r, 1.5 * Math.PI, 2 * Math.PI, false);
+    // 8. Top-Left L-Notch
+    shape.lineTo(-w2 + nx, d2 - nz);
+    shape.lineTo(-w2 + nx, d2);
 
     const extrudeSettings = {
       depth: thickness,
@@ -553,11 +558,11 @@ export class MeshFactory {
       }
     }
 
-    // 2. Build Corner-Notched MDF Shelf Panels
+    // 2. Build Square L-Notched MDF Shelf Panels
     if (graph.mdfShelves) {
       for (const shelf of graph.mdfShelves) {
-        const notchR = shelf.notchRadius || (shelf.dowelDiameter ? shelf.dowelDiameter / 2 + 6.0 : 17.5);
-        const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material, notchR);
+        const notchSize = shelf.notchSize || 25.0;
+        const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material, notchSize);
         mesh.position.set(...shelf.position);
         mesh.userData.partId = shelf.id;
         mesh.userData.partType = 'mdf_shelf';
