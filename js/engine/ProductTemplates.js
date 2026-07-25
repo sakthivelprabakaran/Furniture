@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Capped/Open Extension Socket Toggles!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Symmetrical Top & Bottom Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -46,10 +46,10 @@ const ALL_PRODUCTS = [
       const bayD = p.bayDepth;
       const tH = p.tierHeight;
 
-      // Determine active bay columns
-      // Center bay is always at bay index 0 (or centered)
-      const activeBaysList = [];
+      // Socket Insertion Depth Offset (Leaves 25mm insertion depth inside sleeve without colliding with center core!)
+      const socketOffset = 22.0;
 
+      const activeBaysList = [];
       if (p.hasLeftWing) {
         activeBaysList.push({ bIdx: -1, tiers: p.leftTiers, isCenter: false });
       }
@@ -58,14 +58,12 @@ const ALL_PRODUCTS = [
         activeBaysList.push({ bIdx: 1, tiers: p.rightTiers, isCenter: false });
       }
 
-      // Map bay index to tier count
       const bayTierMap = new Map();
       activeBaysList.forEach(item => bayTierMap.set(item.bIdx, item.tiers));
 
       const minB = Math.min(...activeBaysList.map(a => a.bIdx));
       const maxB = Math.max(...activeBaysList.map(a => a.bIdx));
 
-      // Build Outer Dowel Frame & Nodes
       const gridConnectors = new Map();
       const getCoordKey = (bIdx, tIdx, isBack) => `${bIdx}_${tIdx}_${isBack ? 'B' : 'F'}`;
 
@@ -81,13 +79,12 @@ const ALL_PRODUCTS = [
         for (let t = 0; t <= colTiers; t++) {
           const yPos = t * tH;
 
-          // Register node coordinates
           gridConnectors.set(getCoordKey(b, t, false), { x: xPos, y: yPos, z: 0, b, t, isBack: false, maxColT: colTiers });
           gridConnectors.set(getCoordKey(b, t, true), { x: xPos, y: yPos, z: bayD, b, t, isBack: true, maxColT: colTiers });
 
-          // Vertical Dowel Leg
+          // Vertical Dowel Leg (Offset cleanly to prevent Z-fighting clipping!)
           if (t > 0) {
-            const rodLen = tH - dowelDia;
+            const rodLen = tH - 2 * socketOffset;
             const midY = yPos - tH / 2;
 
             graph.dowelRods.push({
@@ -109,7 +106,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // Outer Perimeter Rails & Clean MDF Shelf Panels per Active Bay
+      // Outer Perimeter Rails & Clean MDF Shelf Panels
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -119,11 +116,11 @@ const ALL_PRODUCTS = [
         for (let t = 1; t <= bTiers; t++) {
           const yPos = t * tH;
 
-          // 1. Front Horizontal Perimeter Rail
+          // 1. Front Horizontal Perimeter Rail (Offset length cleanly!)
           graph.dowelRods.push({
             id: `rod_h_x_front_b${b}_t${t}`,
             position: [xMid, yPos, 0],
-            length: bayW - dowelDia,
+            length: bayW - 2 * socketOffset,
             diameter: dowelDia,
             rotation: [0, 0, Math.PI / 2],
             material: p.woodFinish
@@ -133,7 +130,7 @@ const ALL_PRODUCTS = [
           graph.dowelRods.push({
             id: `rod_h_x_back_b${b}_t${t}`,
             position: [xMid, yPos, bayD],
-            length: bayW - dowelDia,
+            length: bayW - 2 * socketOffset,
             diameter: dowelDia,
             rotation: [0, 0, Math.PI / 2],
             material: p.woodFinish
@@ -144,7 +141,7 @@ const ALL_PRODUCTS = [
             graph.dowelRods.push({
               id: `rod_h_z_left_b${b}_t${t}`,
               position: [xStart, yPos, bayD / 2],
-              length: bayD - dowelDia,
+              length: bayD - 2 * socketOffset,
               diameter: dowelDia,
               rotation: [Math.PI / 2, 0, 0],
               material: p.woodFinish
@@ -155,19 +152,19 @@ const ALL_PRODUCTS = [
             graph.dowelRods.push({
               id: `rod_h_z_right_b${b}_t${t}`,
               position: [xStart + bayW, yPos, bayD / 2],
-              length: bayD - dowelDia,
+              length: bayD - 2 * socketOffset,
               diameter: dowelDia,
               rotation: [Math.PI / 2, 0, 0],
               material: p.woodFinish
             });
           }
 
-          // 4. CLEAN MDF SHELF INSERT PANEL (Replaces internal dowel clutter!)
+          // 4. CLEAN MDF SHELF INSERT PANEL
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + 6, bayD / 2],
-            width: bayW - dowelDia - 6,
-            depth: bayD - dowelDia - 6,
+            width: bayW - 2 * socketOffset - 4,
+            depth: bayD - 2 * socketOffset - 4,
             thickness: 12,
             material: p.shelfMaterial
           });
@@ -184,7 +181,7 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // Practical 3D Printed Connector Capping & Socket Port Logic
+      // Practical 3D Printed Connector Logic with Top & Bottom Socket Sleeves
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
 
@@ -196,21 +193,18 @@ const ALL_PRODUCTS = [
           px: true,
           nx: true,
           py: true,
-          ny: true,
+          ny: true, // Symmetrical Bottom Vertical Sleeve (+Y and -Y both active!)
           pz: true
         };
 
-        // Determine if left (-X) port should be capped or open
         if (isLeftBoundary) {
           openPorts.nx = p.extendLeftPort;
         }
 
-        // Determine if right (+X) port should be capped or open
         if (isRightBoundary) {
           openPorts.px = p.extendRightPort;
         }
 
-        // Determine if top (+Y) port should be capped or open
         if (isTopBoundary) {
           openPorts.py = p.extendTopPort;
         }

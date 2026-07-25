@@ -8,99 +8,132 @@ export class MeshFactory {
   }
 
   /**
-   * Helper to build a practical 3D Printed Socket Tube with recessed bore & optional capped end
+   * Helper to build a true 3D Hollow Socket Sleeve Tube with chamfered lips and optional capped end
    */
   _createSocketTube(dowelRadius, socketLength, outerRadius, mat, isCapped) {
     const tubeGroup = new THREE.Group();
 
-    // Outer Cylinder Body
-    const outerGeo = new THREE.CylinderGeometry(outerRadius, outerRadius * 0.95, socketLength, 24);
-    const outerMesh = new THREE.Mesh(outerGeo, mat);
-    outerMesh.position.y = socketLength / 2;
-    tubeGroup.add(outerMesh);
-
     if (isCapped) {
-      // Smooth Rounded Dome Cap on closed end
-      const capGeo = new THREE.SphereGeometry(outerRadius * 0.95, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+      // Outer Solid Cylinder + Rounded Dome Cap
+      const outerGeo = new THREE.CylinderGeometry(outerRadius, outerRadius, socketLength, 24);
+      const outerMesh = new THREE.Mesh(outerGeo, mat);
+      outerMesh.position.y = socketLength / 2;
+      tubeGroup.add(outerMesh);
+
+      const capGeo = new THREE.SphereGeometry(outerRadius * 0.98, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
       const capMesh = new THREE.Mesh(capGeo, mat);
       capMesh.position.y = socketLength;
       tubeGroup.add(capMesh);
     } else {
-      // Recessed Inner Bore Hole for open socket port
-      const innerBoreGeo = new THREE.CylinderGeometry(dowelRadius + 0.5, dowelRadius + 0.5, socketLength * 0.8, 20);
+      // True Hollow 3D Sleeve Shell (Outer cylinder with hollow inner bore)
+      const wallThickness = outerRadius - dowelRadius;
+      const boreRadius = dowelRadius + 0.4; // Clearance fit (+0.4mm)
+
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+
+      const holePath = new THREE.Path();
+      holePath.absarc(0, 0, boreRadius, 0, Math.PI * 2, true);
+      shape.holes.push(holePath);
+
+      const extrudeSettings = {
+        depth: socketLength,
+        bevelEnabled: true,
+        bevelThickness: 1.0,
+        bevelSize: 1.0,
+        bevelSegments: 2
+      };
+
+      const sleeveGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      const sleeveMesh = new THREE.Mesh(sleeveGeo, mat);
+      sleeveMesh.rotation.x = -Math.PI / 2; // Orient along +Y axis
+      tubeGroup.add(sleeveMesh);
+
+      // Inner Dowel Stop Bumper inside the sleeve
+      const stopGeo = new THREE.CylinderGeometry(boreRadius, boreRadius * 0.7, 3, 20);
       const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-      const innerBoreMesh = new THREE.Mesh(innerBoreGeo, darkMat);
-      innerBoreMesh.position.y = socketLength * 0.6;
-      tubeGroup.add(innerBoreMesh);
+      const stopMesh = new THREE.Mesh(stopGeo, darkMat);
+      stopMesh.position.y = 2.0;
+      tubeGroup.add(stopMesh);
     }
 
     return tubeGroup;
   }
 
   /**
-   * Create Practical 3D Printed 3-Way Corner Connector (Chunky, Capped or Open Ports)
+   * Create Practical 3D Printed 3-Way Corner Connector (Symmetrical Top & Bottom Sleeves!)
    */
-  create3WayCornerConnector(dowelDiameter, colorType, openPorts = { x: true, y: true, z: true }) {
+  create3WayCornerConnector(dowelDiameter, colorType, openPorts = { x: true, y: true, ny: true, z: true }) {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 6.0; // Practical chunky 6mm wall thickness!
-    const socketLength = 38.0; // Practical 38mm insertion sleeve!
+    const outerRadius = dowelRadius + 5.5; // Practical 5.5mm wall thickness
+    const socketLength = 35.0; // Practical 35mm insertion sleeve
 
-    // Central Sphere Core
-    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.15, 24, 24);
+    // Central Core Sphere
+    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.12, 24, 24);
     const sphereMesh = new THREE.Mesh(sphereGeo, mat);
     group.add(sphereMesh);
 
-    // Socket 1: X Axis
-    const sockX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.x);
-    sockX.rotation.z = -Math.PI / 2;
-    group.add(sockX);
+    // Socket +X (Right)
+    const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.x);
+    sockPX.rotation.z = -Math.PI / 2;
+    group.add(sockPX);
 
-    // Socket 2: Y Axis
-    const sockY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.y);
-    group.add(sockY);
+    // Socket +Y (Top Vertical Sleeve)
+    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.y);
+    group.add(sockPY);
 
-    // Socket 3: Z Axis
-    const sockZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.z);
-    sockZ.rotation.x = Math.PI / 2;
-    group.add(sockZ);
+    // Socket -Y (Bottom Vertical Sleeve — FIXED!)
+    const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
+    sockNY.rotation.x = Math.PI;
+    group.add(sockNY);
+
+    // Socket +Z (Front)
+    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.z);
+    sockPZ.rotation.x = Math.PI / 2;
+    group.add(sockPZ);
 
     group.userData = { partType: '3way_connector' };
     return group;
   }
 
   /**
-   * Create Practical 3D Printed 4-Way Cross Connector
+   * Create Practical 3D Printed 4-Way Cross Connector (Symmetrical Top & Bottom Sleeves!)
    */
-  create4WayCrossConnector(dowelDiameter, colorType, openPorts = { px: true, nx: true, py: true, pz: true }) {
+  create4WayCrossConnector(dowelDiameter, colorType, openPorts = { px: true, nx: true, py: true, ny: true, pz: true }) {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 6.0;
-    const socketLength = 38.0;
+    const outerRadius = dowelRadius + 5.5;
+    const socketLength = 35.0;
 
-    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.2, 24, 24);
+    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.15, 24, 24);
     const sphereMesh = new THREE.Mesh(sphereGeo, mat);
     group.add(sphereMesh);
 
-    // +X
+    // +X (Right)
     const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.px);
     sockPX.rotation.z = -Math.PI / 2;
     group.add(sockPX);
 
-    // -X
+    // -X (Left)
     const sockNX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.nx);
     sockNX.rotation.z = Math.PI / 2;
     group.add(sockNX);
 
-    // +Y
+    // +Y (Top Vertical Sleeve)
     const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
     group.add(sockPY);
 
-    // +Z
+    // -Y (Bottom Vertical Sleeve — FIXED!)
+    const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
+    sockNY.rotation.x = Math.PI;
+    group.add(sockNY);
+
+    // +Z (Front)
     const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.pz);
     sockPZ.rotation.x = Math.PI / 2;
     group.add(sockPZ);
@@ -117,10 +150,10 @@ export class MeshFactory {
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 6.0;
-    const socketLength = 38.0;
+    const outerRadius = dowelRadius + 5.5;
+    const socketLength = 35.0;
 
-    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.25, 24, 24);
+    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.2, 24, 24);
     const sphereMesh = new THREE.Mesh(sphereGeo, mat);
     group.add(sphereMesh);
 
@@ -150,7 +183,7 @@ export class MeshFactory {
     const mat = this.materials.getMaterial(colorType || 'connector_forest_green');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 6.0;
+    const outerRadius = dowelRadius + 5.5;
     const capHeight = 35.0;
 
     const capGeo = new THREE.CylinderGeometry(outerRadius, outerRadius * 0.85, capHeight, 24);
@@ -158,7 +191,7 @@ export class MeshFactory {
     capMesh.position.y = capHeight / 2;
     group.add(capMesh);
 
-    const innerBoreGeo = new THREE.CylinderGeometry(dowelRadius + 0.5, dowelRadius + 0.5, capHeight * 0.7, 20);
+    const innerBoreGeo = new THREE.CylinderGeometry(dowelRadius + 0.4, dowelRadius + 0.4, capHeight * 0.7, 20);
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
     const innerBoreMesh = new THREE.Mesh(innerBoreGeo, darkMat);
     innerBoreMesh.position.y = capHeight * 0.65;
