@@ -4,6 +4,7 @@ export class ARController {
   constructor(sceneGraph) {
     this.sceneGraph = sceneGraph;
     this.exporter = new USDZExporter();
+    this.localIp = '192.168.29.13';
   }
 
   /**
@@ -44,7 +45,7 @@ export class ARController {
       const blobUrl = URL.createObjectURL(usdzBlob);
 
       if (isIOSDevice) {
-        // Trigger Native iOS AR Quick Look Camera Mode!
+        // Trigger Native iOS AR Quick Look Camera Mode on iPhone!
         const anchor = document.createElement('a');
         anchor.setAttribute('rel', 'ar');
         anchor.setAttribute('id', 'usdz-ar-link');
@@ -108,8 +109,9 @@ export class ARController {
       modal.remove();
     }
 
-    const currentUrl = window.location.href;
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(currentUrl)}`;
+    // Wi-Fi accessible local IP URL for iPhone Safari
+    const mobileUrl = `http://${this.localIp}:8088/studio.html`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUrl)}`;
 
     modal = document.createElement('div');
     modal.id = 'ar-qr-modal';
@@ -125,16 +127,21 @@ export class ARController {
     `;
 
     modal.innerHTML = `
-      <div style="background:#151828;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:32px;text-align:center;max-width:380px;box-shadow:0 20px 50px rgba(0,0,0,0.6);color:#fff;">
-        <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">📱 View in AR on iPhone</div>
-        <div style="font-size:0.85rem;color:#aaa;margin-bottom:20px;">Scan this QR code with your iPhone Camera to place this custom furniture in your room at 1:1 scale!</div>
+      <div style="background:#151828;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:32px;text-align:center;max-width:420px;box-shadow:0 20px 50px rgba(0,0,0,0.6);color:#fff;">
+        <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">📱 Open on your iPhone</div>
+        <div style="font-size:0.85rem;color:#aaa;margin-bottom:16px;">AR requires an iPhone or iPad camera. Scan this QR code with your iPhone camera (connected to the same Wi-Fi):</div>
         
-        <div style="background:#fff;padding:12px;border-radius:12px;display:inline-block;margin-bottom:20px;">
+        <div style="background:#fff;padding:12px;border-radius:12px;display:inline-block;margin-bottom:16px;">
           <img src="${qrApiUrl}" alt="Scan QR Code" style="width:200px;height:200px;display:block;">
         </div>
 
-        <div>
-          <button id="close-ar-modal" style="background:linear-gradient(135deg,#d4a373 0%,#b8864a 100%);border:none;color:#111;padding:10px 24px;border-radius:24px;font-weight:700;cursor:pointer;font-size:0.9rem;">Done</button>
+        <div style="font-size:0.8rem;color:#d4a373;margin-bottom:20px;word-break:break-all;">
+          Or open Safari on iPhone: <b>http://${this.localIp}:8088/studio.html</b>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <a href="${blobUrl}" download="plant_stand_1to1.usdz" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:10px 16px;border-radius:24px;font-weight:600;text-decoration:none;font-size:0.85rem;">📥 AirDrop .USDZ</a>
+          <button id="close-ar-modal" style="background:linear-gradient(135deg,#d4a373 0%,#b8864a 100%);border:none;color:#111;padding:10px 24px;border-radius:24px;font-weight:700;cursor:pointer;font-size:0.85rem;">Close</button>
         </div>
       </div>
     `;
