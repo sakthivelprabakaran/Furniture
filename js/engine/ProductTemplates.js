@@ -31,7 +31,7 @@ const ALL_PRODUCTS = [
       connectorColor: { value: 'connector_terracotta', options: ['connector_terracotta', 'connector_forest_green', 'connector_stone_grey', 'connector_matte_black', 'connector_white'], label: '3D Joint & Flange Color', group: 'Materials & Colors' }
     },
     buildGraph: (p) => {
-      const graph = { dowelRods: [], mdfShelves: [], connectors: [], wallFlanges: [], hangingPegs: [] };
+      const graph = { dowelRods: [], mdfShelves: [], connectors: [], wallConnectors: [], wallFlanges: [], hangingPegs: [] };
 
       const dowelDia = p.dowelDiameter;
       const dowelRad = dowelDia / 2;
@@ -123,21 +123,28 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 4. WALL FLANGES AT REAR (Z = 0) AND 3D JOINTS AT FRONT (Z = bayD)
+      // 4. REAR WALL CONNECTORS (Z = 0) AND FRONT 3D JOINTS (Z = bayD)
       for (let c = 0; c <= colCount; c++) {
         const xPos = c * bayW;
         for (let r = 0; r <= rowCount; r++) {
           const yPos = r * bayH;
 
-          // Wall Flange Anchor Socket at wall
-          graph.wallFlanges.push({
-            id: `wall_flange_c${c}_r${r}`,
-            position: [xPos, yPos, -15],
+          // Unified 3D Wall-Mount Connector at Z = 0 (Combines 4-Way Cross Sockets + Wall Flange Baseplate)
+          graph.wallConnectors.push({
+            id: `wall_conn_c${c}_r${r}`,
+            position: [xPos, yPos, 0],
             diameter: dowelDia,
-            color: p.connectorColor
+            color: p.connectorColor,
+            openPorts: {
+              px: c < colCount,
+              nx: c > 0,
+              py: r < rowCount,
+              ny: r > 0,
+              pz: true // Connects to depth bridge dowel extending along +Z
+            }
           });
 
-          // Front 3D Joint Connectors
+          // Front 3D Joint Connectors at Z = bayD
           if (r > 0) {
             graph.connectors.push({
               id: `conn_front_c${c}_r${r}`,
@@ -151,7 +158,7 @@ const ALL_PRODUCTS = [
                 py: r < rowCount,
                 ny: true,
                 pz: false,
-                nz: true
+                nz: true // Connects to depth bridge dowel extending back along -Z
               },
               cornerType: c === 0 ? 'front_left' : 'front_right'
             });

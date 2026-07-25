@@ -26,13 +26,13 @@ function testModuwallConnections() {
   console.log('📋 Test 1: Grid Dimensions (3 Bays Wide x 3 Rows High)');
   const g1 = buildGraph({ gridColumns: 3, gridRows: 3, bayWidth: 340, bayHeight: 300, rackDepth: 180 });
 
-  // 1.1 Check Wall Flange Count
-  const expectedFlanges = (3 + 1) * (3 + 1); // 4 cols * 4 rows = 16 flanges
-  if (g1.wallFlanges.length !== expectedFlanges) {
-    console.error(`  ❌ FAILED: Expected ${expectedFlanges} wall flanges, found ${g1.wallFlanges.length}`);
+  // 1.1 Check Wall Connector Count
+  const expectedWallConnectors = (3 + 1) * (3 + 1); // 4 cols * 4 rows = 16 wall connectors
+  if (g1.wallConnectors.length !== expectedWallConnectors) {
+    console.error(`  ❌ FAILED: Expected ${expectedWallConnectors} wall connectors, found ${g1.wallConnectors.length}`);
     passedAll = false;
   } else {
-    console.log(`  ✅ Wall Flange Count is exact (${expectedFlanges} flanges).`);
+    console.log(`  ✅ 3D Wall-Mount Connector Count is exact (${expectedWallConnectors} connectors).`);
   }
 
   // 1.2 Check Front Connector Count
@@ -41,7 +41,7 @@ function testModuwallConnections() {
     console.error(`  ❌ FAILED: Expected ${expectedConnectors} front connectors, found ${g1.connectors.length}`);
     passedAll = false;
   } else {
-    console.log(`  ✅ Front Connector Count is exact (${expectedConnectors} connectors).`);
+    console.log(`  ✅ Front 3D Joint Connector Count is exact (${expectedConnectors} connectors).`);
   }
 
   // 1.3 Check Floating Shelf Count

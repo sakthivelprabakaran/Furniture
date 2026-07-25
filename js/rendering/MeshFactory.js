@@ -268,6 +268,74 @@ export class MeshFactory {
   }
 
   /**
+   * Create 3D Printed Multi-Way Wall-Mount Connector (Combines 4-Way Cross Joint Sockets with Wall Flange Anchor Plate)
+   */
+  createWallMountConnector(dowelDiameter, colorType, openPorts = {}) {
+    const group = new THREE.Group();
+    const mat = this.materials.getMaterial(colorType || 'connector_terracotta');
+
+    const dowelRadius = dowelDiameter / 2;
+    const outerRadius = dowelRadius + 5.5;
+    const socketLength = 35.0;
+    const flangeSize = 56.0;
+    const flangeThickness = 8.0;
+
+    // 1. Central Core Sphere
+    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.15, 24, 24);
+    const sphereMesh = new THREE.Mesh(sphereGeo, mat);
+    group.add(sphereMesh);
+
+    // 2. Wall Mounting Baseplate at Back (-Z)
+    const baseGeo = new THREE.BoxGeometry(flangeSize, flangeSize, flangeThickness);
+    const baseMesh = new THREE.Mesh(baseGeo, mat);
+    baseMesh.position.z = -outerRadius - flangeThickness / 2;
+    group.add(baseMesh);
+
+    // 4 Countersunk Screw Holes
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const holeGeo = new THREE.CylinderGeometry(2.5, 2.5, flangeThickness + 2, 16);
+    const holeOffsets = [
+      [-flangeSize * 0.35, flangeSize * 0.35],
+      [flangeSize * 0.35, flangeSize * 0.35],
+      [-flangeSize * 0.35, -flangeSize * 0.35],
+      [flangeSize * 0.35, -flangeSize * 0.35]
+    ];
+    holeOffsets.forEach(([hx, hy]) => {
+      const holeMesh = new THREE.Mesh(holeGeo, darkMat);
+      holeMesh.position.set(hx, hy, -outerRadius - flangeThickness / 2);
+      holeMesh.rotation.x = Math.PI / 2;
+      group.add(holeMesh);
+    });
+
+    // 3. Socket +X (Right)
+    const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.px);
+    sockPX.rotation.z = -Math.PI / 2;
+    group.add(sockPX);
+
+    // 4. Socket -X (Left)
+    const sockNX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.nx);
+    sockNX.rotation.z = Math.PI / 2;
+    group.add(sockNX);
+
+    // 5. Socket +Y (Top)
+    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
+    group.add(sockPY);
+
+    // 6. Socket -Y (Bottom)
+    const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
+    sockNY.rotation.x = Math.PI;
+    group.add(sockNY);
+
+    // 7. Socket +Z (Front Depth Arm)
+    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.pz);
+    sockPZ.rotation.x = Math.PI / 2;
+    group.add(sockPZ);
+
+    group.userData = { partType: 'wall_connector' };
+    return group;
+  }
+
+  /**
    * Create Hanging Dowel Peg (For Coat/Headphone Wall Attachments)
    */
   createHangingPeg(length = 80, diameter = 18, materialType = 'beech_natural') {
@@ -690,7 +758,22 @@ export class MeshFactory {
       }
     }
 
-    // 5. Build Wall Mount Flanges
+    // 5. Build Wall Mount Connectors
+    if (graph.wallConnectors) {
+      for (const conn of graph.wallConnectors) {
+        const mesh = this.createWallMountConnector(conn.diameter, conn.color, conn.openPorts);
+        mesh.position.set(...conn.position);
+        if (conn.rotation) {
+          mesh.rotation.set(...conn.rotation);
+        }
+        mesh.userData.partId = conn.id;
+        mesh.userData.partType = 'wall_connector';
+        mesh.name = conn.id;
+        root.add(mesh);
+      }
+    }
+
+    // 6. Build Wall Mount Flanges
     if (graph.wallFlanges) {
       for (const flange of graph.wallFlanges) {
         const mesh = this.createWallMountFlange(flange.diameter, flange.color);
