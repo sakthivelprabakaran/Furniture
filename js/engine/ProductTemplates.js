@@ -11,6 +11,150 @@ export class ProductTemplates {
 
 const ALL_PRODUCTS = [
   {
+    id: 'moduwall_system',
+    name: 'MODUWALL — Wall-Mounted Parametric Modular Organizer',
+    icon: '🧱',
+    category: 'wall_mounted',
+    description: '3D Printed Wall Anchor Flanges + Ø25mm Beech Dowel Grid + Floating L-Notched Shelves & Coat/Headphone Hanging Pegs!',
+    parameters: {
+      gridColumns: { value: 3, min: 1, max: 5, step: 1, unit: ' bays', label: 'Grid Columns (Bays)', group: 'Grid Setup' },
+      gridRows: { value: 3, min: 1, max: 4, step: 1, unit: ' rows', label: 'Grid Rows (Levels)', group: 'Grid Setup' },
+      bayWidth: { value: 340, min: 260, max: 480, step: 10, unit: 'mm', label: 'Bay Width', group: 'Grid Setup' },
+      bayHeight: { value: 300, min: 220, max: 420, step: 10, unit: 'mm', label: 'Row Height', group: 'Grid Setup' },
+      rackDepth: { value: 180, min: 140, max: 260, step: 10, unit: 'mm', label: 'Shelf Depth', group: 'Grid Setup' },
+
+      hasCoatPegs: { value: true, options: [false, true], label: 'Add Coat & Headphone Pegs', group: 'Attachments' },
+
+      dowelDiameter: { value: 22, min: 20, max: 28, step: 1, unit: 'mm', label: 'Dowel Diameter', group: 'Materials & Colors' },
+      woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Wood Dowel Finish', group: 'Materials & Colors' },
+      shelfMaterial: { value: 'mdf_natural', options: ['mdf_natural', 'mdf_black', 'beech_natural'], label: 'Shelf Board Finish', group: 'Materials & Colors' },
+      connectorColor: { value: 'connector_terracotta', options: ['connector_terracotta', 'connector_forest_green', 'connector_stone_grey', 'connector_matte_black', 'connector_white'], label: '3D Joint & Flange Color', group: 'Materials & Colors' }
+    },
+    buildGraph: (p) => {
+      const graph = { dowelRods: [], mdfShelves: [], connectors: [], wallFlanges: [], hangingPegs: [] };
+
+      const dowelDia = p.dowelDiameter;
+      const dowelRad = dowelDia / 2;
+      const colCount = p.gridColumns;
+      const rowCount = p.gridRows;
+      const bayW = p.bayWidth;
+      const bayH = p.bayHeight;
+      const bayD = p.rackDepth;
+
+      const socketOffset = 22.0;
+
+      // 1. Grid Dowel Skeleton (Attached to Wall at Z = 0)
+      // Vertical Dowels
+      for (let c = 0; c <= colCount; c++) {
+        const xPos = c * bayW;
+        for (let r = 1; r <= rowCount; r++) {
+          const yMid = (r - 0.5) * bayH;
+          graph.dowelRods.push({
+            id: `rod_v_c${c}_r${r}`,
+            position: [xPos, yMid, 0],
+            length: bayH - 2 * socketOffset,
+            diameter: dowelDia,
+            material: p.woodFinish
+          });
+        }
+      }
+
+      // Horizontal Dowels
+      for (let r = 0; r <= rowCount; r++) {
+        const yPos = r * bayH;
+        for (let c = 1; c <= colCount; c++) {
+          const xMid = (c - 0.5) * bayW;
+          graph.dowelRods.push({
+            id: `rod_h_c${c}_r${r}`,
+            position: [xMid, yPos, 0],
+            length: bayW - 2 * socketOffset,
+            diameter: dowelDia,
+            rotation: [0, 0, Math.PI / 2],
+            material: p.woodFinish
+          });
+        }
+      }
+
+      // Depth Dowel Arms extending out from wall (+Z) to support floating shelves
+      for (let c = 0; c <= colCount; c++) {
+        const xPos = c * bayW;
+        for (let r = 1; r <= rowCount; r++) {
+          const yPos = r * bayH;
+          graph.dowelRods.push({
+            id: `rod_z_c${c}_r${r}`,
+            position: [xPos, yPos, bayD / 2],
+            length: bayD - 2 * socketOffset,
+            diameter: dowelDia,
+            rotation: [Math.PI / 2, 0, 0],
+            material: p.woodFinish
+          });
+        }
+      }
+
+      // 2. Wall Flanges & Connectors
+      for (let c = 0; c <= colCount; c++) {
+        const xPos = c * bayW;
+        for (let r = 0; r <= rowCount; r++) {
+          const yPos = r * bayH;
+
+          // Wall Flange Anchor Socket extending back to wall
+          graph.wallFlanges.push({
+            id: `wall_flange_c${c}_r${r}`,
+            position: [xPos, yPos, -15],
+            diameter: dowelDia,
+            color: p.connectorColor
+          });
+
+          // 3D Joint Connectors at front of depth arms
+          if (r > 0) {
+            graph.connectors.push({
+              id: `conn_front_c${c}_r${r}`,
+              type: (c === 0 || c === colCount) ? '3way' : '4way',
+              position: [xPos, yPos, bayD],
+              diameter: dowelDia,
+              color: p.connectorColor,
+              openPorts: { px: true, nx: true, py: true, ny: true, pz: false, nz: true },
+              cornerType: c === 0 ? 'front_left' : 'front_right'
+            });
+          }
+        }
+      }
+
+      // 3. Floating L-Notched Wooden Shelves
+      for (let c = 1; c <= colCount; c++) {
+        const xMid = (c - 0.5) * bayW;
+        for (let r = 1; r <= rowCount; r++) {
+          const yPos = r * bayH;
+          graph.mdfShelves.push({
+            id: `shelf_c${c}_r${r}`,
+            position: [xMid, yPos + dowelRad, bayD / 2],
+            width: bayW - 3.0,
+            depth: bayD,
+            thickness: 12,
+            notchSize: 40.0,
+            material: p.shelfMaterial
+          });
+        }
+      }
+
+      // 4. Hanging Dowel Pegs (For coats, bags, headphones)
+      if (p.hasCoatPegs) {
+        for (let c = 0; c <= colCount; c++) {
+          const xPos = c * bayW;
+          graph.hangingPegs.push({
+            id: `coat_peg_c${c}`,
+            position: [xPos, 0, 40],
+            length: 90,
+            diameter: 18,
+            material: p.woodFinish
+          });
+        }
+      }
+
+      return graph;
+    }
+  },
+  {
     id: 'moduplant_infinite',
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',

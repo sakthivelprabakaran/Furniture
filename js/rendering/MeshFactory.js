@@ -211,6 +211,88 @@ export class MeshFactory {
   }
 
   /**
+   * Create 3D Printed Heavy-Duty Wall Mount Bracket Flange (4 Screw Holes)
+   */
+  createWallMountFlange(dowelDiameter, colorType) {
+    const group = new THREE.Group();
+    const mat = this.materials.getMaterial(colorType || 'connector_terracotta');
+
+    const dowelRadius = dowelDiameter / 2;
+    const outerRadius = dowelRadius + 5.5;
+    const flangeWidth = 60.0;
+    const flangeHeight = 60.0;
+    const baseThickness = 8.0;
+    const socketLength = 35.0;
+
+    // Square Backing Plate (Mounts flush against wall)
+    const baseGeo = new THREE.BoxGeometry(flangeWidth, flangeHeight, baseThickness);
+    const baseMesh = new THREE.Mesh(baseGeo, mat);
+    baseMesh.position.z = -baseThickness / 2;
+    group.add(baseMesh);
+
+    // 4 Countersunk Screw Hole Insets
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const holeRadius = 2.5;
+    const holeGeo = new THREE.CylinderGeometry(holeRadius, holeRadius, baseThickness + 2, 16);
+
+    const holeOffsets = [
+      [-flangeWidth * 0.35, flangeHeight * 0.35],
+      [flangeWidth * 0.35, flangeHeight * 0.35],
+      [-flangeWidth * 0.35, -flangeHeight * 0.35],
+      [flangeWidth * 0.35, -flangeHeight * 0.35]
+    ];
+
+    holeOffsets.forEach(([hx, hy]) => {
+      const holeMesh = new THREE.Mesh(holeGeo, darkMat);
+      holeMesh.position.set(hx, hy, -baseThickness / 2);
+      holeMesh.rotation.x = Math.PI / 2;
+      group.add(holeMesh);
+    });
+
+    // Front Socket Tube extending forward (+Z)
+    const socketGeo = new THREE.CylinderGeometry(outerRadius, outerRadius, socketLength, 24);
+    const socketMesh = new THREE.Mesh(socketGeo, mat);
+    socketMesh.position.z = socketLength / 2;
+    socketMesh.rotation.x = Math.PI / 2;
+    group.add(socketMesh);
+
+    // Inner Bore Tube
+    const boreGeo = new THREE.CylinderGeometry(dowelRadius + 0.4, dowelRadius + 0.4, socketLength + 1, 20);
+    const boreMesh = new THREE.Mesh(boreGeo, darkMat);
+    boreMesh.position.z = socketLength / 2;
+    boreMesh.rotation.x = Math.PI / 2;
+    group.add(boreMesh);
+
+    group.userData = { partType: 'wall_flange' };
+    return group;
+  }
+
+  /**
+   * Create Hanging Dowel Peg (For Coat/Headphone Wall Attachments)
+   */
+  createHangingPeg(length = 80, diameter = 18, materialType = 'beech_natural') {
+    const group = new THREE.Group();
+    const mat = this.materials.getMaterial(materialType);
+    const radius = diameter / 2;
+
+    // Main Peg Body
+    const pegGeo = new THREE.CylinderGeometry(radius, radius * 0.85, length, 24);
+    const pegMesh = new THREE.Mesh(pegGeo, mat);
+    pegMesh.position.z = length / 2;
+    pegMesh.rotation.x = Math.PI / 2;
+    group.add(pegMesh);
+
+    // Rounded End Knob
+    const knobGeo = new THREE.SphereGeometry(radius * 1.15, 20, 20);
+    const knobMesh = new THREE.Mesh(knobGeo, mat);
+    knobMesh.position.z = length;
+    group.add(knobMesh);
+
+    group.userData = { partType: 'hanging_peg' };
+    return group;
+  }
+
+  /**
    * Create Heavy-Duty Structural Wooden Dowel Rod (Ø20-25mm)
    */
   createDowelRod(length, diameter, materialType) {
@@ -608,7 +690,37 @@ export class MeshFactory {
       }
     }
 
-    // 5. Legacy Spice Rack Nodes
+    // 5. Build Wall Mount Flanges
+    if (graph.wallFlanges) {
+      for (const flange of graph.wallFlanges) {
+        const mesh = this.createWallMountFlange(flange.diameter, flange.color);
+        mesh.position.set(...flange.position);
+        if (flange.rotation) {
+          mesh.rotation.set(...flange.rotation);
+        }
+        mesh.userData.partId = flange.id;
+        mesh.userData.partType = 'wall_flange';
+        mesh.name = flange.id;
+        root.add(mesh);
+      }
+    }
+
+    // 6. Build Hanging Pegs
+    if (graph.hangingPegs) {
+      for (const peg of graph.hangingPegs) {
+        const mesh = this.createHangingPeg(peg.length, peg.diameter, peg.material);
+        mesh.position.set(...peg.position);
+        if (peg.rotation) {
+          mesh.rotation.set(...peg.rotation);
+        }
+        mesh.userData.partId = peg.id;
+        mesh.userData.partType = 'hanging_peg';
+        mesh.name = peg.id;
+        root.add(mesh);
+      }
+    }
+
+    // 7. Legacy Spice Rack Nodes
     if (graph.panels) {
       for (const panel of graph.panels) {
         const mesh = this.createPanel(
