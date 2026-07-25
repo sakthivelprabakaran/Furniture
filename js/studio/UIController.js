@@ -28,6 +28,7 @@ export class UIController {
     this.elBtnExplode = document.getElementById('btn-explode');
     this.elBtnResetCam = document.getElementById('btn-reset-camera');
     this.elBtnExportDrawing = document.getElementById('btn-export-drawing');
+    this.elBtnAR = document.getElementById('btn-ar');
     this.elAnimSlider = document.getElementById('anim-slider');
     this.elBadge = document.getElementById('view-badge');
     this.elInfo = document.getElementById('viewport-info');
@@ -36,6 +37,12 @@ export class UIController {
   }
 
   _bindEvents() {
+    if (this.elBtnAR) {
+      this.elBtnAR.addEventListener('click', () => {
+        if (this.callbacks.onLaunchAR) this.callbacks.onLaunchAR();
+      });
+    }
+
     if (this.elBtnExplode) {
       this.elBtnExplode.addEventListener('click', () => {
         if (this.callbacks.onExplodeToggle) this.callbacks.onExplodeToggle();

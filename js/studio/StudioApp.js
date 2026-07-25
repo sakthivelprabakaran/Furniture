@@ -5,6 +5,7 @@ import { MaterialLibrary } from '../rendering/MaterialLibrary.js';
 import { UIController } from './UIController.js';
 import { Animator } from './Animator.js';
 import { DrawingExporter } from './DrawingExporter.js';
+import { ARController } from './ARController.js';
 
 class StudioApp {
   constructor() {
@@ -15,6 +16,7 @@ class StudioApp {
     this.ui = new UIController();
     this.animator = new Animator();
     this.exporter = new DrawingExporter(this.engine);
+    this.arController = new ARController();
 
     this._init();
   }
@@ -45,7 +47,8 @@ class StudioApp {
       onExplodeToggle: () => this._toggleExplode(),
       onResetCamera: () => this.scene.resetCamera(),
       onAnimSliderChange: (progress) => this._onAnimSlider(progress),
-      onExportDrawing: () => this._showBlueprintModal()
+      onExportDrawing: () => this._showBlueprintModal(),
+      onLaunchAR: () => this.arController.launchAR(this.scene.productGroup)
     });
 
     // Rebuild initial 3D model
