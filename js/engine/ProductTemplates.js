@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Overhang Square L-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Zero-Collision Square L-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -119,7 +119,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. Horizontal X-Rails & OVERHANG SQUARE L-NOTCHED MDF SHELVES
+      // 2. Horizontal X-Rails & ZERO-COLLISION SQUARE L-NOTCHED MDF SHELVES
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -149,18 +149,18 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // OVERHANG SQUARE L-NOTCHED MDF SHELF PANEL
-          // width = bayW + 4.0mm, depth = bayD + 4.0mm (generous +2mm outer lip over perimeter dowels)
-          // notchSize = 37.5mm (+2.5mm assembly tolerance clearance from socket sleeve lip)
+          // ZERO-COLLISION SQUARE L-NOTCHED MDF SHELF PANEL
+          // width = bayW, depth = bayD (exact frame span)
+          // notchSize = 40.0mm (+5.0mm generous clearance from socket sleeve lip)
           const panelThickness = 12;
           const socketLength = 35.0;
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + dowelRad, bayD / 2],
-            width: bayW + 4.0,
-            depth: bayD + 4.0,
+            width: bayW,
+            depth: bayD,
             thickness: panelThickness,
-            notchSize: socketLength + 2.5, // 37.5mm clean square L-notch with generous assembly clearance
+            notchSize: socketLength + 5.0, // 40.0mm notch leaves a clean 5.0mm gap from 3D connector sleeve
             dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });
