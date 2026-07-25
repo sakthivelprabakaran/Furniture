@@ -19,6 +19,28 @@ export class ARController {
   }
 
   /**
+   * Build a URL with all current parametric settings encoded as query params.
+   * When iPhone opens this URL, StudioApp._restoreParamsFromURL() will
+   * reconstruct the exact same configuration.
+   */
+  _buildMobileURLWithParams(engine) {
+    const base = `http://${this.localIp}:8088/studio.html`;
+    const params = new URLSearchParams();
+
+    if (engine && engine._currentProduct) {
+      params.set('product', engine._currentProduct.id);
+    }
+
+    if (engine && engine._parameters) {
+      for (const [key, value] of Object.entries(engine._parameters)) {
+        params.set(key, String(value));
+      }
+    }
+
+    return `${base}?${params.toString()}`;
+  }
+
+  /**
    * Generate USDZ Blob from current 3D Scene Graph using official Three.js USDZExporter
    */
   async generateUSDZBlob(scene) {
@@ -60,9 +82,10 @@ export class ARController {
   }
 
   /**
-   * Launch Native iOS AR Quick Look Camera or Desktop QR Code Modal
+   * Launch Native iOS AR Quick Look Camera or Desktop QR Code Modal.
+   * Accepts an optional `engine` param so we can encode current settings into the QR URL.
    */
-  async launchAR(scene) {
+  async launchAR(scene, engine) {
     const isIOSDevice = this.isIOS();
 
     // Show Loading Spinner / Status Toast
@@ -94,8 +117,8 @@ export class ARController {
 
         this._showToast('📱 Opening Native iOS AR Camera...');
       } else {
-        // Desktop / Laptop: Display QR Code Modal so user can scan with iPhone!
-        this._showQRCodeModal(blobUrl);
+        // Desktop / Laptop: Display QR Code Modal with encoded settings!
+        this._showQRCodeModal(blobUrl, engine);
         this._showToast('📱 Scan QR Code with your iPhone Camera!');
       }
     } catch (err) {
@@ -136,15 +159,15 @@ export class ARController {
     }, 4000);
   }
 
-  _showQRCodeModal(blobUrl) {
+  _showQRCodeModal(blobUrl, engine) {
     let modal = document.getElementById('ar-qr-modal');
     if (modal) {
       modal.remove();
     }
 
-    // Wi-Fi accessible local IP URL for iPhone Safari
-    const mobileUrl = `http://${this.localIp}:8088/studio.html`;
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUrl)}`;
+    // Build the mobile URL with ALL current parametric settings encoded as query params!
+    const mobileUrl = this._buildMobileURLWithParams(engine);
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(mobileUrl)}`;
 
     modal = document.createElement('div');
     modal.id = 'ar-qr-modal';
@@ -162,14 +185,15 @@ export class ARController {
     modal.innerHTML = `
       <div style="background:#151828;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:32px;text-align:center;max-width:420px;box-shadow:0 20px 50px rgba(0,0,0,0.6);color:#fff;">
         <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px;">📱 Open on your iPhone</div>
-        <div style="font-size:0.85rem;color:#aaa;margin-bottom:16px;">AR requires an iPhone or iPad camera. Scan this QR code with your iPhone camera (connected to the same Wi-Fi):</div>
+        <div style="font-size:0.85rem;color:#aaa;margin-bottom:6px;">Your custom settings (tiers, wings, colors) are encoded in the QR code!</div>
+        <div style="font-size:0.75rem;color:#6a8a5a;margin-bottom:16px;">✅ iPhone will load the exact same configuration</div>
         
         <div style="background:#fff;padding:12px;border-radius:12px;display:inline-block;margin-bottom:16px;">
-          <img src="${qrApiUrl}" alt="Scan QR Code" style="width:200px;height:200px;display:block;">
+          <img src="${qrApiUrl}" alt="Scan QR Code" style="width:220px;height:220px;display:block;">
         </div>
 
-        <div style="font-size:0.8rem;color:#d4a373;margin-bottom:20px;word-break:break-all;">
-          Or open Safari on iPhone: <b>http://${this.localIp}:8088/studio.html</b>
+        <div style="font-size:0.75rem;color:#d4a373;margin-bottom:20px;word-break:break-all;max-height:60px;overflow:auto;">
+          ${mobileUrl}
         </div>
 
         <div style="display:flex;gap:12px;justify-content:center;">

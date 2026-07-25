@@ -40,6 +40,9 @@ class StudioApp {
     // Load MODUPLANT Modular Plant Stand as default model!
     this.engine.loadProduct('moduplant_infinite');
 
+    // Restore any URL query parameters (from QR code / shared link)
+    this._restoreParamsFromURL();
+
     // Initialize UI bindings
     this.ui.init(this.engine, {
       onParameterChange: (key, value) => this._updateParameter(key, value),
@@ -48,7 +51,7 @@ class StudioApp {
       onResetCamera: () => this.scene.resetCamera(),
       onAnimSliderChange: (progress) => this._onAnimSlider(progress),
       onExportDrawing: () => this._showBlueprintModal(),
-      onLaunchAR: () => this.arController.launchAR(this.scene.getProductGroup())
+      onLaunchAR: () => this.arController.launchAR(this.scene.getProductGroup(), this.engine)
     });
 
     // Rebuild initial 3D model
@@ -74,6 +77,37 @@ class StudioApp {
     this._animationLoop();
 
     console.log('🪵 Achuva 3D Preview Engine: MODUPLANT System Loaded');
+  }
+
+  /**
+   * Restore parametric settings from URL query parameters.
+   * This enables the AR QR code flow: laptop customizations are encoded into the URL,
+   * and when the iPhone opens the link, the exact same configuration is restored.
+   */
+  _restoreParamsFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Check for product ID
+    const productId = urlParams.get('product');
+    if (productId) {
+      this.engine.loadProduct(productId);
+    }
+
+    // Restore each parameter from URL
+    const allParams = this.engine.getAllParameters();
+    for (const key of Object.keys(allParams)) {
+      const urlVal = urlParams.get(key);
+      if (urlVal !== null) {
+        // Parse booleans and numbers correctly
+        let parsed;
+        if (urlVal === 'true') parsed = true;
+        else if (urlVal === 'false') parsed = false;
+        else if (!isNaN(Number(urlVal))) parsed = Number(urlVal);
+        else parsed = urlVal;
+
+        this.engine.setParameter(key, parsed);
+      }
+    }
   }
 
   _switchProduct(productId) {
