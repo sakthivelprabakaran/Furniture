@@ -1,4 +1,4 @@
-import { USDZExporter } from '../rendering/USDZExporter.js';
+import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
 
 export class ARController {
   constructor(sceneGraph) {
@@ -18,12 +18,20 @@ export class ARController {
   }
 
   /**
-   * Generate USDZ Blob from current 3D Scene Graph
+   * Generate USDZ Blob from current 3D Scene Graph using official Three.js USDZExporter
    */
   async generateUSDZBlob(scene) {
     const targetScene = scene || this.sceneGraph;
     if (!targetScene) return null;
-    return await this.exporter.parse(targetScene);
+
+    try {
+      // Official Three.js USDZExporter.parse() returns Uint8Array or ArrayBuffer asynchronously
+      const usdzArrayBuffer = await this.exporter.parse(targetScene);
+      return new Blob([usdzArrayBuffer], { type: 'model/vnd.usdz+zip' });
+    } catch (err) {
+      console.error('Three.js USDZExporter Parse Error:', err);
+      return null;
+    }
   }
 
   /**
