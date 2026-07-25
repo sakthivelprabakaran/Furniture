@@ -119,7 +119,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. Horizontal X-Rails & SQUARE L-NOTCHED MDF SHELVES (Seated Flat On Dowels!)
+      // 2. Horizontal X-Rails & SQUARE L-NOTCHED MDF SHELVES (Exact 36.0mm Cutout Aligned to Socket Lips!)
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -149,16 +149,17 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // SQUARE L-NOTCHED MDF SHELF PANEL (Rests flat on top of the 4 perimeter dowels!)
-          // Bottom surface is at yPos + dowelRad (e.g. yPos + 11mm)
+          // SQUARE L-NOTCHED MDF SHELF PANEL
+          // 36.0mm notch size matches exact 35.0mm socket sleeve length + 1.0mm clearance fit!
           const panelThickness = 12;
+          const socketLength = 35.0;
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + dowelRad, bayD / 2],
             width: bayW,
             depth: bayD,
             thickness: panelThickness,
-            notchSize: 24.5, // 24.5mm clean square L-cutout at all 4 corners!
+            notchSize: socketLength + 1.0, // 36.0mm clean square L-notch aligned exactly with socket sleeve lips!
             dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });
