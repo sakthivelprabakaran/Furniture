@@ -268,68 +268,85 @@ export class MeshFactory {
   }
 
   /**
-   * Create 3D Printed Multi-Way Wall-Mount Connector (Combines 4-Way Cross Joint Sockets with Wall Flange Anchor Plate)
+   * Create Sleek Wall Mount Bracket & Node Connector (Matching Reference Hardware Design)
+   * Features: Rounded square wall plate, cylindrical standoff stem, smooth dowel bore sleeves, & Allen key fasteners.
    */
   createWallMountConnector(dowelDiameter, colorType, openPorts = {}) {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(colorType || 'connector_terracotta');
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.3 });
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 5.5;
-    const socketLength = 35.0;
-    const flangeSize = 56.0;
-    const flangeThickness = 8.0;
+    const sleeveRadius = dowelRadius + 4.0;
+    const sleeveLength = 48.0;
+    const standoffLength = 32.0;
 
-    // 1. Central Core Sphere
-    const sphereGeo = new THREE.SphereGeometry(outerRadius * 1.15, 24, 24);
-    const sphereMesh = new THREE.Mesh(sphereGeo, mat);
-    group.add(sphereMesh);
+    // 1. Sleek Wall Plate with Rounded Corners (48mm x 48mm, thickness 6mm)
+    const plateWidth = 48.0;
+    const plateThickness = 6.0;
+    const plateShape = new THREE.Shape();
+    const r = 8.0; // corner radius
+    const hw = plateWidth / 2;
+    plateShape.moveTo(-hw + r, -hw);
+    plateShape.lineTo(hw - r, -hw);
+    plateShape.quadraticCurveTo(hw, -hw, hw, -hw + r);
+    plateShape.lineTo(hw, hw - r);
+    plateShape.quadraticCurveTo(hw, hw, hw - r, hw);
+    plateShape.lineTo(-hw + r, hw);
+    plateShape.quadraticCurveTo(-hw, hw, -hw, hw - r);
+    plateShape.lineTo(-hw, -hw + r);
+    plateShape.quadraticCurveTo(-hw, -hw, -hw + r, -hw);
 
-    // 2. Wall Mounting Baseplate at Back (-Z)
-    const baseGeo = new THREE.BoxGeometry(flangeSize, flangeSize, flangeThickness);
-    const baseMesh = new THREE.Mesh(baseGeo, mat);
-    baseMesh.position.z = -outerRadius - flangeThickness / 2;
-    group.add(baseMesh);
+    const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth: plateThickness, bevelEnabled: false });
+    plateGeo.center();
+    const plateMesh = new THREE.Mesh(plateGeo, mat);
+    plateMesh.position.z = -standoffLength - plateThickness / 2;
+    group.add(plateMesh);
 
-    // 4 Countersunk Screw Holes
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-    const holeGeo = new THREE.CylinderGeometry(2.5, 2.5, flangeThickness + 2, 16);
-    const holeOffsets = [
-      [-flangeSize * 0.35, flangeSize * 0.35],
-      [flangeSize * 0.35, flangeSize * 0.35],
-      [-flangeSize * 0.35, -flangeSize * 0.35],
-      [flangeSize * 0.35, -flangeSize * 0.35]
-    ];
+    // 2 Countersunk Screw Hole Insets on Backing Plate
+    const holeGeo = new THREE.CylinderGeometry(2.2, 2.2, plateThickness + 2, 16);
+    const holeOffsets = [[-14, 0], [14, 0]];
     holeOffsets.forEach(([hx, hy]) => {
-      const holeMesh = new THREE.Mesh(holeGeo, darkMat);
-      holeMesh.position.set(hx, hy, -outerRadius - flangeThickness / 2);
-      holeMesh.rotation.x = Math.PI / 2;
-      group.add(holeMesh);
+      const screwHeadGeo = new THREE.CylinderGeometry(3.8, 2.2, 3.0, 16);
+      const screwHeadMesh = new THREE.Mesh(screwHeadGeo, metalMat);
+      screwHeadMesh.position.set(hx, hy, -standoffLength + 1.5);
+      screwHeadMesh.rotation.x = Math.PI / 2;
+      group.add(screwHeadMesh);
     });
 
-    // 3. Socket +X (Right)
-    const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.px);
-    sockPX.rotation.z = -Math.PI / 2;
-    group.add(sockPX);
+    // 2. Cylindrical Standoff Stem extending from wall to dowel sleeve
+    const stemRadius = dowelRadius + 2.5;
+    const stemGeo = new THREE.CylinderGeometry(stemRadius, stemRadius * 1.1, standoffLength, 24);
+    const stemMesh = new THREE.Mesh(stemGeo, mat);
+    stemMesh.position.z = -standoffLength / 2;
+    stemMesh.rotation.x = Math.PI / 2;
+    group.add(stemMesh);
 
-    // 4. Socket -X (Left)
-    const sockNX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.nx);
-    sockNX.rotation.z = Math.PI / 2;
-    group.add(sockNX);
+    // 3. Main Vertical / Cross Sleeve Cylinder
+    const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 28);
+    const sleeveMesh = new THREE.Mesh(sleeveGeo, mat);
+    group.add(sleeveMesh);
 
-    // 5. Socket +Y (Top)
-    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
-    group.add(sockPY);
+    // Inner Bore Dark Inset
+    const boreGeo = new THREE.CylinderGeometry(dowelRadius + 0.3, dowelRadius + 0.3, sleeveLength + 1, 24);
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+    const boreMesh = new THREE.Mesh(boreGeo, darkMat);
+    group.add(boreMesh);
 
-    // 6. Socket -Y (Bottom)
-    const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
-    sockNY.rotation.x = Math.PI;
-    group.add(sockNY);
+    // 4. Branch Socket for Horizontal Dowels (If open)
+    if (openPorts.px || openPorts.nx) {
+      const branchGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, 24.0, 24);
+      const branchMesh = new THREE.Mesh(branchGeo, mat);
+      branchMesh.rotation.z = Math.PI / 2;
+      group.add(branchMesh);
+    }
 
-    // 7. Socket +Z (Front Depth Arm)
-    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.pz);
-    sockPZ.rotation.x = Math.PI / 2;
-    group.add(sockPZ);
+    // 5. Side Allen Key Fastener Bolt (Matching Reference Image!)
+    const boltGeo = new THREE.CylinderGeometry(3.5, 3.5, 4.0, 16);
+    const boltMesh = new THREE.Mesh(boltGeo, metalMat);
+    boltMesh.position.set(sleeveRadius - 0.5, 0, 0);
+    boltMesh.rotation.z = -Math.PI / 2;
+    group.add(boltMesh);
 
     group.userData = { partType: 'wall_connector' };
     return group;
