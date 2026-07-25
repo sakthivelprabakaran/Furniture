@@ -66,7 +66,7 @@ const ALL_PRODUCTS = [
       const gridConnectors = new Map();
       const getCoordKey = (bIdx, tIdx, isBack) => `${bIdx}_${tIdx}_${isBack ? 'B' : 'F'}`;
 
-      // 1. Vertical Posts & Node Coordinates
+      // 1. Vertical Posts & Node Grid
       for (let b = minB; b <= maxB + 1; b++) {
         const xPos = b * bayW;
 
@@ -170,7 +170,7 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // 3. Exact 1-to-1 Mathematical Socket Port Alignment & Capping Logic
+      // 3. RIGOROUS MATHEMATICAL CONNECTOR PORTS & CAPPING LOGIC
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
         const b = node.b;
@@ -189,28 +189,34 @@ const ALL_PRODUCTS = [
           nz: true
         };
 
-        // +X Port (Right): open ONLY if tier t exists in bay b to the right, or if right extension toggle is ON at rightmost boundary!
-        if (b <= maxB && (bayTierMap.get(b) || 0) >= t && t > 0) {
+        // Right (+X) Port Logic:
+        // Open IF a bay exists to the right (bay b) at tier t (internal connection)
+        // OR IF no bay exists to the right at tier t AND extendRightPort is true (user extension!)
+        const rightBayTiers = bayTierMap.get(b) || 0;
+        if (b <= maxB && rightBayTiers >= t && t > 0) {
           openPorts.px = true;
-        } else if (isRightBoundary && p.extendRightPort) {
+        } else if (p.extendRightPort && t > 0) {
           openPorts.px = true;
         }
 
-        // -X Port (Left): open ONLY if tier t exists in bay b-1 to the left, or if left extension toggle is ON at leftmost boundary!
-        if (b > minB && (bayTierMap.get(b - 1) || 0) >= t && t > 0) {
+        // Left (-X) Port Logic:
+        // Open IF a bay exists to the left (bay b-1) at tier t (internal connection)
+        // OR IF no bay exists to the left at tier t AND extendLeftPort is true (user extension!)
+        const leftBayTiers = bayTierMap.get(b - 1) || 0;
+        if (b > minB && leftBayTiers >= t && t > 0) {
           openPorts.nx = true;
-        } else if (isLeftBoundary && p.extendLeftPort) {
+        } else if (p.extendLeftPort && t > 0) {
           openPorts.nx = true;
         }
 
-        // +Y Port (Top): open if vertical post continues upward, or if top extension toggle is ON at top boundary!
+        // Top (+Y) Port Logic:
         if (!isTopBoundary) {
           openPorts.py = true;
         } else if (p.extendTopPort) {
           openPorts.py = true;
         }
 
-        // -Y Port (Bottom): open if not floor level!
+        // Bottom (-Y) Port Logic:
         if (!isBottom) {
           openPorts.ny = true;
         }
