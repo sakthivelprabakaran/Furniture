@@ -67,6 +67,7 @@ const ALL_PRODUCTS = [
       const gridConnectors = new Map();
       const getCoordKey = (bIdx, tIdx, isBack) => `${bIdx}_${tIdx}_${isBack ? 'B' : 'F'}`;
 
+      // 1. Vertical Posts & Node Grid
       for (let b = minB; b <= maxB + 1; b++) {
         const xPos = b * bayW;
 
@@ -106,17 +107,18 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // Outer Perimeter Rails & Clean MDF Shelf Panels
+      // 2. COMPLETE 4-DOWEL PERIMETER FRAME & CLEAN MDF SHELF PANELS FOR EVERY ACTIVE BAY TIER
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
+        const xEnd = xStart + bayW;
         const xMid = xStart + bayW / 2;
         const bTiers = bayInfo.tiers;
 
         for (let t = 1; t <= bTiers; t++) {
           const yPos = t * tH;
 
-          // 1. Front Horizontal Perimeter Rail
+          // 2.1 Front Horizontal Perimeter Rail (Left-to-Right along X at Z=0)
           graph.dowelRods.push({
             id: `rod_h_x_front_b${b}_t${t}`,
             position: [xMid, yPos, 0],
@@ -126,7 +128,7 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // 2. Back Horizontal Perimeter Rail
+          // 2.2 Back Horizontal Perimeter Rail (Left-to-Right along X at Z=bayD)
           graph.dowelRods.push({
             id: `rod_h_x_back_b${b}_t${t}`,
             position: [xMid, yPos, bayD],
@@ -136,30 +138,27 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // 3. Left & Right Side Depth Perimeter Rails
-          if (b === minB || (bayTierMap.get(b - 1) || 0) < t) {
-            graph.dowelRods.push({
-              id: `rod_h_z_left_b${b}_t${t}`,
-              position: [xStart, yPos, bayD / 2],
-              length: bayD - 2 * socketOffset,
-              diameter: dowelDia,
-              rotation: [Math.PI / 2, 0, 0],
-              material: p.woodFinish
-            });
-          }
+          // 2.3 Left Side Depth Perimeter Rail (Front-to-Back along Z at X=xStart)
+          graph.dowelRods.push({
+            id: `rod_h_z_left_b${b}_t${t}`,
+            position: [xStart, yPos, bayD / 2],
+            length: bayD - 2 * socketOffset,
+            diameter: dowelDia,
+            rotation: [Math.PI / 2, 0, 0],
+            material: p.woodFinish
+          });
 
-          if (b === maxB || (bayTierMap.get(b + 1) || 0) < t) {
-            graph.dowelRods.push({
-              id: `rod_h_z_right_b${b}_t${t}`,
-              position: [xStart + bayW, yPos, bayD / 2],
-              length: bayD - 2 * socketOffset,
-              diameter: dowelDia,
-              rotation: [Math.PI / 2, 0, 0],
-              material: p.woodFinish
-            });
-          }
+          // 2.4 Right Side Depth Perimeter Rail (Front-to-Back along Z at X=xEnd)
+          graph.dowelRods.push({
+            id: `rod_h_z_right_b${b}_t${t}`,
+            position: [xEnd, yPos, bayD / 2],
+            length: bayD - 2 * socketOffset,
+            diameter: dowelDia,
+            rotation: [Math.PI / 2, 0, 0],
+            material: p.woodFinish
+          });
 
-          // 4. CLEAN MDF SHELF INSERT PANEL (Seated flush on perimeter frame!)
+          // 2.5 CLEAN MDF SHELF INSERT PANEL (Seated flush on perimeter frame!)
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + 6, bayD / 2],
@@ -169,7 +168,7 @@ const ALL_PRODUCTS = [
             material: p.shelfMaterial
           });
 
-          // 5. Ceramic Plant Pot on top of MDF shelf panel
+          // 2.6 Ceramic Plant Pot on top of MDF shelf panel
           const potColors = ['ceramic_white', 'ceramic_terracotta', 'ceramic_charcoal'];
           graph.plantPots.push({
             id: `plant_pot_b${b}_t${t}`,
@@ -181,7 +180,7 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // Directional 3D Printed Connector Placement with Exact Corner Type
+      // 3. Directional 3D Printed Connector Placement with Full Socket Alignment
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
 
@@ -210,7 +209,6 @@ const ALL_PRODUCTS = [
           openPorts.py = p.extendTopPort;
         }
 
-        // Determine specific Corner Type for directional socket alignment
         let cornerType = 'front_left';
         if (isRightBoundary && !node.isBack) cornerType = 'front_right';
         else if (isLeftBoundary && node.isBack) cornerType = 'back_left';
