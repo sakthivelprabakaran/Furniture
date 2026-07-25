@@ -46,7 +46,6 @@ const ALL_PRODUCTS = [
       const bayD = p.bayDepth;
       const tH = p.tierHeight;
 
-      // Socket Insertion Depth Offset (Leaves 25mm insertion depth inside sleeve without colliding with center core!)
       const socketOffset = 22.0;
 
       const activeBaysList = [];
@@ -67,7 +66,7 @@ const ALL_PRODUCTS = [
       const gridConnectors = new Map();
       const getCoordKey = (bIdx, tIdx, isBack) => `${bIdx}_${tIdx}_${isBack ? 'B' : 'F'}`;
 
-      // 1. Vertical Posts & Node Grid
+      // 1. Vertical Posts & Node Coordinates
       for (let b = minB; b <= maxB + 1; b++) {
         const xPos = b * bayW;
 
@@ -104,21 +103,32 @@ const ALL_PRODUCTS = [
               material: p.woodFinish
             });
           }
+
+          // Side Depth Rails (Front-to-Back along Z) — Generated ONCE per column line b!
+          if (t > 0) {
+            graph.dowelRods.push({
+              id: `rod_h_z_b${b}_t${t}`,
+              position: [xPos, yPos, bayD / 2],
+              length: bayD - 2 * socketOffset,
+              diameter: dowelDia,
+              rotation: [Math.PI / 2, 0, 0],
+              material: p.woodFinish
+            });
+          }
         }
       }
 
-      // 2. COMPLETE 4-DOWEL PERIMETER FRAME & CLEAN MDF SHELF PANELS FOR EVERY ACTIVE BAY TIER
+      // 2. Horizontal X-Rails & MDF Shelves for Active Bays
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
-        const xEnd = xStart + bayW;
         const xMid = xStart + bayW / 2;
         const bTiers = bayInfo.tiers;
 
         for (let t = 1; t <= bTiers; t++) {
           const yPos = t * tH;
 
-          // 2.1 Front Horizontal Perimeter Rail (Left-to-Right along X at Z=0)
+          // Front Horizontal Rail
           graph.dowelRods.push({
             id: `rod_h_x_front_b${b}_t${t}`,
             position: [xMid, yPos, 0],
@@ -128,7 +138,7 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // 2.2 Back Horizontal Perimeter Rail (Left-to-Right along X at Z=bayD)
+          // Back Horizontal Rail
           graph.dowelRods.push({
             id: `rod_h_x_back_b${b}_t${t}`,
             position: [xMid, yPos, bayD],
@@ -138,27 +148,7 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // 2.3 Left Side Depth Perimeter Rail (Front-to-Back along Z at X=xStart)
-          graph.dowelRods.push({
-            id: `rod_h_z_left_b${b}_t${t}`,
-            position: [xStart, yPos, bayD / 2],
-            length: bayD - 2 * socketOffset,
-            diameter: dowelDia,
-            rotation: [Math.PI / 2, 0, 0],
-            material: p.woodFinish
-          });
-
-          // 2.4 Right Side Depth Perimeter Rail (Front-to-Back along Z at X=xEnd)
-          graph.dowelRods.push({
-            id: `rod_h_z_right_b${b}_t${t}`,
-            position: [xEnd, yPos, bayD / 2],
-            length: bayD - 2 * socketOffset,
-            diameter: dowelDia,
-            rotation: [Math.PI / 2, 0, 0],
-            material: p.woodFinish
-          });
-
-          // 2.5 CLEAN MDF SHELF INSERT PANEL (Seated flush on perimeter frame!)
+          // MDF Shelf Panel Insert
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + 6, bayD / 2],
@@ -168,7 +158,7 @@ const ALL_PRODUCTS = [
             material: p.shelfMaterial
           });
 
-          // 2.6 Ceramic Plant Pot on top of MDF shelf panel
+          // Ceramic Plant Pot
           const potColors = ['ceramic_white', 'ceramic_terracotta', 'ceramic_charcoal'];
           graph.plantPots.push({
             id: `plant_pot_b${b}_t${t}`,
@@ -180,33 +170,49 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // 3. Directional 3D Printed Connector Placement with Full Socket Alignment
+      // 3. Exact 1-to-1 Mathematical Socket Port Alignment & Capping Logic
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
+        const b = node.b;
+        const t = node.t;
 
-        const isLeftBoundary = node.b === minB;
-        const isRightBoundary = node.b === maxB + 1;
-        const isTopBoundary = node.t === node.maxColT;
+        const isLeftBoundary = b === minB;
+        const isRightBoundary = b === maxB + 1;
+        const isTopBoundary = t === node.maxColT;
 
         const openPorts = {
-          px: true,
-          nx: true,
-          py: true,
-          ny: true,
+          px: false,
+          nx: false,
+          py: false,
+          ny: false,
           pz: true,
           nz: true
         };
 
-        if (isLeftBoundary) {
-          openPorts.nx = p.extendLeftPort;
+        // +X Port (Right): open ONLY if tier t exists in bay b to the right, or if right extension toggle is ON at rightmost boundary!
+        if (b <= maxB && (bayTierMap.get(b) || 0) >= t && t > 0) {
+          openPorts.px = true;
+        } else if (isRightBoundary && p.extendRightPort) {
+          openPorts.px = true;
         }
 
-        if (isRightBoundary) {
-          openPorts.px = p.extendRightPort;
+        // -X Port (Left): open ONLY if tier t exists in bay b-1 to the left, or if left extension toggle is ON at leftmost boundary!
+        if (b > minB && (bayTierMap.get(b - 1) || 0) >= t && t > 0) {
+          openPorts.nx = true;
+        } else if (isLeftBoundary && p.extendLeftPort) {
+          openPorts.nx = true;
         }
 
-        if (isTopBoundary) {
-          openPorts.py = p.extendTopPort;
+        // +Y Port (Top): open if vertical post continues upward, or if top extension toggle is ON at top boundary!
+        if (!isTopBoundary) {
+          openPorts.py = true;
+        } else if (p.extendTopPort) {
+          openPorts.py = true;
+        }
+
+        // -Y Port (Bottom): open if not floor level!
+        if (!isBottom) {
+          openPorts.ny = true;
         }
 
         let cornerType = 'front_left';
