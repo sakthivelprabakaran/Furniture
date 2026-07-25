@@ -1,4 +1,5 @@
 import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
+import * as THREE from 'three';
 
 export class ARController {
   constructor(sceneGraph) {
@@ -25,11 +26,35 @@ export class ARController {
     if (!targetScene) return null;
 
     try {
-      // Official Three.js USDZExporter.parse() returns Uint8Array or ArrayBuffer asynchronously
-      const usdzArrayBuffer = await this.exporter.parse(targetScene);
-      return new Blob([usdzArrayBuffer], { type: 'model/vnd.usdz+zip' });
+      // Clone scene to safely convert any non-MeshStandardMaterial (like MeshPhysicalMaterial) to MeshStandardMaterial
+      const clonedScene = targetScene.clone(true);
+      clonedScene.traverse((child) => {
+        if (child.isMesh && child.material) {
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          const newMats = mats.map(m => {
+            if (!m.isMeshStandardMaterial) {
+              return new THREE.MeshStandardMaterial({
+                color: m.color ? m.color.clone() : new THREE.Color(0xffffff),
+                roughness: m.roughness !== undefined ? m.roughness : 0.5,
+                metalness: m.metalness !== undefined ? m.metalness : 0.0,
+                opacity: m.opacity !== undefined ? m.opacity : 1.0,
+                transparent: !!m.transparent
+              });
+            }
+            return m;
+          });
+          child.material = Array.isArray(child.material) ? newMats : newMats[0];
+        }
+      });
+
+      // Call parseAsync() which returns a Promise resolving to Uint8Array!
+      const usdzUint8Array = await this.exporter.parseAsync(clonedScene, {
+        quickLookCompatible: true
+      });
+
+      return new Blob([usdzUint8Array], { type: 'model/vnd.usdz+zip' });
     } catch (err) {
-      console.error('Three.js USDZExporter Parse Error:', err);
+      console.error('Three.js USDZExporter parseAsync Error:', err);
       return null;
     }
   }
