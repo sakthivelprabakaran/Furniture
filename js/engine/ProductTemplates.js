@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Corner-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -42,6 +42,7 @@ const ALL_PRODUCTS = [
       const graph = { dowelRods: [], mdfShelves: [], connectors: [], plantPots: [] };
 
       const dowelDia = p.dowelDiameter;
+      const dowelRad = dowelDia / 2;
       const bayW = p.bayWidth;
       const bayD = p.bayDepth;
       const tH = p.tierHeight;
@@ -104,7 +105,7 @@ const ALL_PRODUCTS = [
             });
           }
 
-          // Side Depth Rails (Front-to-Back along Z) — Generated ONCE per column line b!
+          // Side Depth Rails (Front-to-Back along Z)
           if (t > 0) {
             graph.dowelRods.push({
               id: `rod_h_z_b${b}_t${t}`,
@@ -118,7 +119,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. Horizontal X-Rails & MDF Shelves for Active Bays
+      // 2. Horizontal X-Rails & CORNER-NOTCHED MDF SHELVES (Seated Flat On Dowels!)
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -148,21 +149,25 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // MDF Shelf Panel Insert
+          // CORNER-NOTCHED MDF SHELF PANEL (Rests flat on top of the 4 perimeter dowels!)
+          // Bottom surface is at yPos + dowelRad (e.g. yPos + 11mm)
+          const panelThickness = 12;
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
-            position: [xMid, yPos + 6, bayD / 2],
-            width: bayW - 2 * socketOffset - 4,
-            depth: bayD - 2 * socketOffset - 4,
-            thickness: 12,
+            position: [xMid, yPos + dowelRad, bayD / 2],
+            width: bayW,
+            depth: bayD,
+            thickness: panelThickness,
+            notchRadius: dowelRad + 5.5 + 0.5, // Outer socket sleeve radius + 0.5mm clearance
+            dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });
 
-          // Ceramic Plant Pot
+          // Ceramic Plant Pot sitting on top of the MDF shelf panel
           const potColors = ['ceramic_white', 'ceramic_terracotta', 'ceramic_charcoal'];
           graph.plantPots.push({
             id: `plant_pot_b${b}_t${t}`,
-            position: [xMid, yPos + 18, bayD / 2],
+            position: [xMid, yPos + dowelRad + panelThickness + 1, bayD / 2],
             radius: 35,
             height: 60,
             color: potColors[Math.abs(b + t) % potColors.length]
@@ -170,7 +175,7 @@ const ALL_PRODUCTS = [
         }
       });
 
-      // 3. RIGOROUS MATHEMATICAL CONNECTOR PORTS & CAPPING LOGIC
+      // 3. Directional 3D Printed Connector Placement
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
         const b = node.b;
@@ -189,9 +194,7 @@ const ALL_PRODUCTS = [
           nz: true
         };
 
-        // Right (+X) Port Logic:
-        // Open IF a bay exists to the right (bay b) at tier t (internal connection)
-        // OR IF no bay exists to the right at tier t AND extendRightPort is true (user extension!)
+        // Right (+X) Port
         const rightBayTiers = bayTierMap.get(b) || 0;
         if (b <= maxB && rightBayTiers >= t && t > 0) {
           openPorts.px = true;
@@ -199,9 +202,7 @@ const ALL_PRODUCTS = [
           openPorts.px = true;
         }
 
-        // Left (-X) Port Logic:
-        // Open IF a bay exists to the left (bay b-1) at tier t (internal connection)
-        // OR IF no bay exists to the left at tier t AND extendLeftPort is true (user extension!)
+        // Left (-X) Port
         const leftBayTiers = bayTierMap.get(b - 1) || 0;
         if (b > minB && leftBayTiers >= t && t > 0) {
           openPorts.nx = true;
@@ -209,14 +210,14 @@ const ALL_PRODUCTS = [
           openPorts.nx = true;
         }
 
-        // Top (+Y) Port Logic:
+        // Top (+Y) Port
         if (!isTopBoundary) {
           openPorts.py = true;
         } else if (p.extendTopPort) {
           openPorts.py = true;
         }
 
-        // Bottom (-Y) Port Logic:
+        // Bottom (-Y) Port
         if (!isBottom) {
           openPorts.ny = true;
         }

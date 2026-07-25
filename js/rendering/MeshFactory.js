@@ -60,7 +60,7 @@ export class MeshFactory {
   }
 
   /**
-   * Create Directional 3D Printed 3-Way Corner Connector (Sockets Orient Inward along Rails!)
+   * Create Directional 3D Printed 3-Way Corner Connector
    */
   create3WayCornerConnector(dowelDiameter, colorType, openPorts = {}, cornerType = 'front_left') {
     const group = new THREE.Group();
@@ -84,22 +84,19 @@ export class MeshFactory {
     sockNY.rotation.x = Math.PI;
     group.add(sockNY);
 
-    // Directional Horizontal Sockets based on corner position
-    // xDir: +1 for right, -1 for left
-    // zDir: +1 for back, -1 for front
     let xDir = 1;
     let zDir = 1;
 
     if (cornerType === 'front_right' || cornerType === 'back_right') xDir = -1;
     if (cornerType === 'back_left' || cornerType === 'back_right') zDir = -1;
 
-    // Horizontal X Sleeve (Frame Rail along X)
+    // Horizontal X Sleeve
     const isXCapped = xDir > 0 ? !openPorts.px : !openPorts.nx;
     const sockX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isXCapped);
     sockX.rotation.z = xDir > 0 ? -Math.PI / 2 : Math.PI / 2;
     group.add(sockX);
 
-    // Depth Z Sleeve (Frame Rail along Z)
+    // Depth Z Sleeve
     const isZCapped = zDir > 0 ? !openPorts.pz : !openPorts.nz;
     const sockZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isZCapped);
     sockZ.rotation.x = zDir > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -143,7 +140,7 @@ export class MeshFactory {
     sockNY.rotation.x = Math.PI;
     group.add(sockNY);
 
-    // Z Depth Sleeve (Inward along depth rail)
+    // Z Depth Sleeve
     const zDir = (cornerType === 'back' || cornerType === 'back_middle') ? -1 : 1;
     const isZCapped = zDir > 0 ? !openPorts.pz : !openPorts.nz;
     const sockZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, isZCapped);
@@ -228,13 +225,55 @@ export class MeshFactory {
   }
 
   /**
-   * Create Clean Solid/Ventilated MDF Shelf Panel (Clean Insert Platform!)
+   * Create Corner-Notched MDF Shelf Panel (With 4 Rounded Quarter-Circle Corner Cutouts!)
    */
-  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural') {
+  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural', notchRadius = 17.5) {
     const mat = this.materials.getMaterial(materialType);
 
-    const panelGeo = new THREE.BoxGeometry(width, thickness, depth);
+    const w2 = width / 2;
+    const d2 = depth / 2;
+    const r = notchRadius;
+
+    // 2D Profile with 4 Inverted Quarter-Circle Corner Cutouts
+    const shape = new THREE.Shape();
+
+    // Top Edge
+    shape.moveTo(-w2 + r, d2);
+    shape.lineTo(w2 - r, d2);
+
+    // Top-Right Corner Cutout Arc around (w2, d2)
+    shape.absarc(w2, d2, r, Math.PI, 1.5 * Math.PI, false);
+
+    // Right Edge
+    shape.lineTo(w2, -d2 + r);
+
+    // Bottom-Right Corner Cutout Arc around (w2, -d2)
+    shape.absarc(w2, -d2, r, 0.5 * Math.PI, Math.PI, false);
+
+    // Bottom Edge
+    shape.lineTo(-w2 + r, -d2);
+
+    // Bottom-Left Corner Cutout Arc around (-w2, -d2)
+    shape.absarc(-w2, -d2, r, 0, 0.5 * Math.PI, false);
+
+    // Left Edge
+    shape.lineTo(-w2, d2 - r);
+
+    // Top-Left Corner Cutout Arc around (-w2, d2)
+    shape.absarc(-w2, d2, r, 1.5 * Math.PI, 2 * Math.PI, false);
+
+    const extrudeSettings = {
+      depth: thickness,
+      bevelEnabled: true,
+      bevelThickness: 1.0,
+      bevelSize: 1.0,
+      bevelSegments: 2
+    };
+
+    const panelGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
     const panelMesh = new THREE.Mesh(panelGeo, mat);
+    panelMesh.rotation.x = -Math.PI / 2; // Orient flat along XZ plane with extrusion going +Y
 
     panelMesh.userData = { partType: 'mdf_shelf' };
     return panelMesh;
@@ -281,7 +320,7 @@ export class MeshFactory {
     return plantGroup;
   }
 
-  // --- Legacy Spice Rack Helpers for backward compatibility ---
+  // --- Legacy Spice Rack Helpers ---
   createPanel(width, height, thickness, materialType, holeSpecs = []) {
     const shape = new THREE.Shape();
     const radius = Math.min(8, thickness / 2);
@@ -499,7 +538,7 @@ export class MeshFactory {
     const root = new THREE.Group();
     root.scale.setScalar(SCALE_FACTOR);
 
-    // 1. Build Dowel Rods (MODUPLANT Outer Skeleton)
+    // 1. Build Dowel Rods
     if (graph.dowelRods) {
       for (const rod of graph.dowelRods) {
         const mesh = this.createDowelRod(rod.length, rod.diameter, rod.material);
@@ -514,10 +553,11 @@ export class MeshFactory {
       }
     }
 
-    // 2. Build MDF Shelf Panels
+    // 2. Build Corner-Notched MDF Shelf Panels
     if (graph.mdfShelves) {
       for (const shelf of graph.mdfShelves) {
-        const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material);
+        const notchR = shelf.notchRadius || (shelf.dowelDiameter ? shelf.dowelDiameter / 2 + 6.0 : 17.5);
+        const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material, notchR);
         mesh.position.set(...shelf.position);
         mesh.userData.partId = shelf.id;
         mesh.userData.partType = 'mdf_shelf';
