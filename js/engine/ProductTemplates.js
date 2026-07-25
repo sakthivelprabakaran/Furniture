@@ -15,7 +15,7 @@ const ALL_PRODUCTS = [
     name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Square L-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + Overhang Square L-Notched MDF Shelf Panels + Practical 3D Printed Joints with Directional Socket Sleeves!',
     parameters: {
       centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
 
@@ -119,7 +119,7 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. Horizontal X-Rails & SQUARE L-NOTCHED MDF SHELVES (Exact 36.0mm Cutout Aligned to Socket Lips!)
+      // 2. Horizontal X-Rails & OVERHANG SQUARE L-NOTCHED MDF SHELVES
       activeBaysList.forEach((bayInfo) => {
         const b = bayInfo.bIdx;
         const xStart = b * bayW;
@@ -149,17 +149,18 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // SQUARE L-NOTCHED MDF SHELF PANEL
-          // 36.0mm notch size matches exact 35.0mm socket sleeve length + 1.0mm clearance fit!
+          // OVERHANG SQUARE L-NOTCHED MDF SHELF PANEL
+          // width = bayW + 4.0mm, depth = bayD + 4.0mm (generous +2mm outer lip over perimeter dowels)
+          // notchSize = 37.5mm (+2.5mm assembly tolerance clearance from socket sleeve lip)
           const panelThickness = 12;
           const socketLength = 35.0;
           graph.mdfShelves.push({
             id: `mdf_shelf_b${b}_t${t}`,
             position: [xMid, yPos + dowelRad, bayD / 2],
-            width: bayW,
-            depth: bayD,
+            width: bayW + 4.0,
+            depth: bayD + 4.0,
             thickness: panelThickness,
-            notchSize: socketLength + 1.0, // 36.0mm clean square L-notch aligned exactly with socket sleeve lips!
+            notchSize: socketLength + 2.5, // 37.5mm clean square L-notch with generous assembly clearance
             dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });

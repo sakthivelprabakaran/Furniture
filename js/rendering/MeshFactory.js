@@ -225,9 +225,9 @@ export class MeshFactory {
   }
 
   /**
-   * Create Precision Corner-Notched MDF Shelf Panel (With Exact 36.0mm L-Cutouts Aligned to Connector Sleeve Lips!)
+   * Create Practical Corner-Notched MDF Shelf Panel (With 37.5mm L-Cutouts for Generous +2.5mm Assembly Tolerance!)
    */
-  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural', notchSize = 36.0) {
+  createMDFShelfPanel(width, depth, thickness = 12, materialType = 'mdf_natural', notchSize = 37.5) {
     const mat = this.materials.getMaterial(materialType);
 
     const w2 = width / 2;
@@ -558,10 +558,10 @@ export class MeshFactory {
       }
     }
 
-    // 2. Build Square L-Notched MDF Shelf Panels
+    // 2. Build Generous Overhang MDF Shelf Panels
     if (graph.mdfShelves) {
       for (const shelf of graph.mdfShelves) {
-        const notchSize = shelf.notchSize || 36.0;
+        const notchSize = shelf.notchSize || 37.5;
         const mesh = this.createMDFShelfPanel(shelf.width, shelf.depth, shelf.thickness, shelf.material, notchSize);
         mesh.position.set(...shelf.position);
         mesh.userData.partId = shelf.id;
