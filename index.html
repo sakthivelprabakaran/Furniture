@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Achuva 3D — 2-Tier Wooden Spice Rack Studio</title>
+  <meta name="description" content="Recreation of the 2-tier wooden spice rack in interactive 3D with explode and assemble views using the Achuva 3D preview engine.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 40px 20px;
+      background: radial-gradient(circle at center, #1b1e2f 0%, #08090f 100%);
+    }
+    .badge-pill {
+      background: rgba(212, 163, 115, 0.15);
+      color: var(--accent-wood);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(212, 163, 115, 0.3);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--accent-wood) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      max-width: 800px;
+    }
+    p {
+      color: var(--text-secondary);
+      font-size: 1.15rem;
+      max-width: 620px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+    }
+    .btn-hero {
+      padding: 14px 32px;
+      font-size: 1rem;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--accent-wood) 0%, #b8864a 100%);
+      color: #111;
+      box-shadow: 0 10px 25px rgba(212, 163, 115, 0.4);
+      transition: all 0.25 ease;
+    }
+    .btn-hero:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 35px rgba(212, 163, 115, 0.6);
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 50px;
+      max-width: 900px;
+    }
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: var(--radius-md);
+      text-align: left;
+    }
+    .feature-card h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+    .feature-card p {
+      font-size: 0.85rem;
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="badge-pill">🪵 Achuva 3D Preview Engine</div>
+    <h1>2-Tier Wooden Spice Rack with Explode & Assemble View</h1>
+    <p>
+      Accurate 3D model recreation featuring 3 solid Acacia wood shelves, continuous vertical dowel pillars, front guard rails, and 16 detailed glass spice jars with cork caps & chalkboard labels.
+    </p>
+
+    <div class="hero-actions">
+      <a href="studio.html" class="btn-hero">🚀 Launch 3D Studio & Explode View</a>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h3>💥 Interactive Explode View</h3>
+        <p>Animate between assembled product state and floating component vectors to inspect every single dowel and shelf joint.</p>
+      </div>
+      <div class="feature-card">
+        <h3>⚙️ Parametric Control</h3>
+        <p>Adjust rack width, shelf depth, tier heights, and wood finish in real-time with instant 3D geometry re-rendering.</p>
+      </div>
+      <div class="feature-card">
+        <h3>📋 Automated BOM</h3>
+        <p>Live Bill of Materials automatically calculates required shelf panels, dowels, guard rails, and spice jars.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
