@@ -105,15 +105,26 @@ export class UIController {
       let itemsHtml = `<div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:4px;">${groupName}</div>`;
 
       for (const item of items) {
-        if (item.options) {
+        if (typeof item.value === 'boolean' || (item.options && typeof item.options[0] === 'boolean')) {
+          // Render Checkbox Toggle for Booleans!
+          itemsHtml += `
+            <div class="param-item" style="flex-direction:row;align-items:center;justify-content:space-between;padding:4px 0;">
+              <span>${item.label}</span>
+              <label class="toggle-switch" style="position:relative;display:inline-block;width:44px;height:22px;">
+                <input type="checkbox" class="toggle-checkbox" data-key="${item.key}" ${item.value ? 'checked' : ''} style="opacity:0;width:0;height:0;">
+                <span class="toggle-slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#333;transition:.3s;border-radius:22px;border:1px solid #555;"></span>
+              </label>
+            </div>
+          `;
+        } else if (item.options) {
           itemsHtml += `
             <div class="param-item">
               <div class="param-header">
                 <span>${item.label}</span>
-                <span class="param-value">${item.value}</span>
+                <span class="param-value">${String(item.value).replace('_', ' ').toUpperCase()}</span>
               </div>
               <select class="select-input" data-key="${item.key}">
-                ${item.options.map(opt => `<option value="${opt}" ${opt === item.value ? 'selected' : ''}>${opt.replace('_', ' ').toUpperCase()}</option>`).join('')}
+                ${item.options.map(opt => `<option value="${opt}" ${opt === item.value ? 'selected' : ''}>${String(opt).replace('_', ' ').toUpperCase()}</option>`).join('')}
               </select>
             </div>
           `;
@@ -134,6 +145,16 @@ export class UIController {
       this.elSidebar.appendChild(groupEl);
     }
 
+    // Bind checkbox toggle events
+    this.elSidebar.querySelectorAll('input.toggle-checkbox').forEach((checkbox) => {
+      checkbox.addEventListener('change', (e) => {
+        const key = e.target.dataset.key;
+        const val = e.target.checked;
+        if (this.callbacks.onParameterChange) this.callbacks.onParameterChange(key, val);
+      });
+    });
+
+    // Bind slider events
     this.elSidebar.querySelectorAll('input.slider').forEach((slider) => {
       slider.addEventListener('input', (e) => {
         const key = e.target.dataset.key;
@@ -147,6 +168,7 @@ export class UIController {
       });
     });
 
+    // Bind select dropdown events
     this.elSidebar.querySelectorAll('select.select-input').forEach((select) => {
       if (select.id === 'template-selector') return;
       select.addEventListener('change', (e) => {
@@ -190,21 +212,15 @@ export class UIController {
 
     this.elInfo.style.opacity = '1';
     if (userData.partType === 'dowel_rod') {
-      this.elInfo.innerHTML = `🥖 <strong>Structural Dowel Rod</strong> (Heavy-Duty Solid Wood)`;
+      this.elInfo.innerHTML = `🥖 <strong>Structural Outer Dowel Rod</strong> (Heavy-Duty Solid Wood)`;
+    } else if (userData.partType === 'mdf_shelf') {
+      this.elInfo.innerHTML = `🪵 <strong>MDF / Wood Shelf Insert Panel</strong> (Plant Pot Platform)`;
     } else if (userData.partType === 'connector') {
-      this.elInfo.innerHTML = `🧩 <strong>3D Printed PETG/ABS Joint Connector</strong> (Push-Fit Socket)`;
+      this.elInfo.innerHTML = `🧩 <strong>Practical 3D Printed Joint Connector</strong> (Push-Fit Socket)`;
     } else if (userData.partType === 'plant_pot') {
       this.elInfo.innerHTML = `🪴 <strong>Ceramic Plant Pot with Foliage</strong>`;
     } else if (userData.partType === 'spice_jar') {
-      this.elInfo.innerHTML = `🫙 <strong>Spice Jar</strong>: ${userData.labelName || 'Spice'} (${userData.spiceType?.replace('spice_', '').toUpperCase()})`;
-    } else if (userData.partType === 'panel') {
-      this.elInfo.innerHTML = `🪵 <strong>Solid Wood Shelf Panel (4 Corner Holes)</strong>`;
-    } else if (userData.partType === 'turned_pillar') {
-      this.elInfo.innerHTML = `🦵 <strong>Continuous Turned Wood Pillar</strong>`;
-    } else if (userData.partType === 'support_collar') {
-      this.elInfo.innerHTML = `⭕ <strong>Separate Wooden Support Collar</strong>`;
-    } else if (userData.partType === 'cross_pin') {
-      this.elInfo.innerHTML = `🔑 <strong>Wooden Cross-Pin Key</strong>`;
+      this.elInfo.innerHTML = `🫙 <strong>Spice Jar</strong>: ${userData.labelName || 'Spice'}`;
     } else {
       this.elInfo.innerHTML = `🔩 <strong>Part</strong>: ${userData.partId}`;
     }
@@ -223,6 +239,9 @@ export class UIController {
       // MODUPLANT Nodes
       bom.dowelRods?.forEach(r => {
         html += `<div class="bom-item"><span>${r.name} (${r.spec})</span><strong>x${r.count}</strong></div>`;
+      });
+      bom.mdfShelves?.forEach(m => {
+        html += `<div class="bom-item"><span>${m.name} (${m.spec})</span><strong>x${m.count}</strong></div>`;
       });
       bom.connectors?.forEach(c => {
         html += `<div class="bom-item"><span>${c.name}</span><strong>x${c.count}</strong></div>`;
@@ -265,9 +284,9 @@ export class UIController {
       this.elInspector.querySelector('.panel-title').innerHTML = '🪴 MODUPLANT Features';
       listEl.innerHTML = `
         <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5;">
-          • <strong>Heavy-Duty Dowels</strong>: Ø20-25mm solid wood rods.<br>
-          • <strong>3D Printed Joints</strong>: High-strength PETG push-fit connectors.<br>
-          • <strong>Infinite Grid Extension</strong>: Add/remove bays and tiers anytime!
+          • <strong>Outer Dowel Skeleton</strong>: Clean perimeter frame.<br>
+          • <strong>MDF Shelf Inserts</strong>: Smooth plant pot platforms.<br>
+          • <strong>Practical 3D Connectors</strong>: Capped/Open extension ports!
         </div>
       `;
     } else {

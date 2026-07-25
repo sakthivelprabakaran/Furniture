@@ -13,6 +13,28 @@
   background: var(--bg-dark);
 }
 
+/* Custom Toggle Switch for Checkbox Parameters */
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #d4a373 !important;
+  border-color: #d4a373 !important;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
 /* Header */
 .studio-header {
   grid-area: header;
@@ -605,7 +627,6 @@
     height: auto !important;
   }
 
-  /* High-Contrast Print SVG Vector Colors */
   .cad-svg text {
     fill: #000000 !important;
   }

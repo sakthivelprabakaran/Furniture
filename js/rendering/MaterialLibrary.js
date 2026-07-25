@@ -8,23 +8,23 @@ export class MaterialLibrary {
   }
 
   _initMaterials() {
-    // 1. Wood Finishes
-    this.materials.set('acacia', new THREE.MeshStandardMaterial({
-      color: 0xba8c54,
-      roughness: 0.55,
-      metalness: 0.05
-    }));
-
-    this.materials.set('rubber_wood', new THREE.MeshStandardMaterial({
-      color: 0xd9ac75,
-      roughness: 0.5,
-      metalness: 0.05
-    }));
-
+    // 1. Wood & MDF Finishes
     this.materials.set('beech_natural', new THREE.MeshStandardMaterial({
       color: 0xe2b988,
       roughness: 0.45,
       metalness: 0.02
+    }));
+
+    this.materials.set('mdf_natural', new THREE.MeshStandardMaterial({
+      color: 0xc49a6c,
+      roughness: 0.7,
+      metalness: 0.02
+    }));
+
+    this.materials.set('mdf_black', new THREE.MeshStandardMaterial({
+      color: 0x242426,
+      roughness: 0.65,
+      metalness: 0.05
     }));
 
     this.materials.set('walnut_stain', new THREE.MeshStandardMaterial({
@@ -39,9 +39,21 @@ export class MaterialLibrary {
       metalness: 0.05
     }));
 
+    this.materials.set('acacia', new THREE.MeshStandardMaterial({
+      color: 0xba8c54,
+      roughness: 0.55,
+      metalness: 0.05
+    }));
+
+    this.materials.set('rubber_wood', new THREE.MeshStandardMaterial({
+      color: 0xd9ac75,
+      roughness: 0.5,
+      metalness: 0.05
+    }));
+
     // 2. 3D Printed PETG / ABS Connector Materials
     this.materials.set('connector_forest_green', new THREE.MeshStandardMaterial({
-      color: 0x486e42,
+      color: 0x3b6635,
       roughness: 0.35,
       metalness: 0.1
     }));
@@ -95,7 +107,7 @@ export class MaterialLibrary {
       metalness: 0.05
     }));
 
-    // 4. Spice Rack Materials
+    // 4. Legacy Spice Rack Materials
     this.materials.set('glass_jar', new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       transparent: true,
@@ -117,7 +129,6 @@ export class MaterialLibrary {
       metalness: 0.8
     }));
 
-    // Spice Fills
     this.materials.set('spice_paprika', new THREE.MeshStandardMaterial({ color: 0xb52414, roughness: 0.8 }));
     this.materials.set('spice_turmeric', new THREE.MeshStandardMaterial({ color: 0xdb9d14, roughness: 0.8 }));
     this.materials.set('spice_oregano', new THREE.MeshStandardMaterial({ color: 0x485828, roughness: 0.9 }));

@@ -12,56 +12,80 @@ export class ProductTemplates {
 const ALL_PRODUCTS = [
   {
     id: 'moduplant_infinite',
-    name: 'MODUPLANT — Infinite Modular Plant Stand System',
+    name: 'MODUPLANT — Modular Plant Stand System V2',
     icon: '🪴',
     category: 'plants',
-    description: 'Modular Dowel Rod (Ø20-25mm) + 3D Printed PETG Connector System. Customisable multi-bay and multi-tier grid extension (e.g. 4-tier center tower with 2-tier side wings)!',
+    description: 'Clean Outer Dowel Skeleton (Ø20-25mm) + MDF Shelf Panels + Practical 3D Printed Joints with Capped/Open Extension Socket Toggles!',
     parameters: {
-      bays: { value: 3, min: 1, max: 4, step: 1, unit: ' bays', label: 'Horizontal Bays', group: 'Grid Extension' },
-      leftTierCount: { value: 2, min: 1, max: 4, step: 1, unit: ' tiers', label: 'Left Wing Tiers', group: 'Grid Extension' },
-      centerTierCount: { value: 4, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Grid Extension' },
-      rightTierCount: { value: 3, min: 1, max: 4, step: 1, unit: ' tiers', label: 'Right Wing Tiers', group: 'Grid Extension' },
-      dowelDiameter: { value: 22, min: 20, max: 28, step: 1, unit: 'mm', label: 'Heavy Dowel Diameter', group: 'Dimensions' },
-      bayWidth: { value: 320, min: 240, max: 450, step: 10, unit: 'mm', label: 'Bay Width', group: 'Dimensions' },
-      bayDepth: { value: 300, min: 240, max: 400, step: 10, unit: 'mm', label: 'Rack Depth', group: 'Dimensions' },
-      tierHeight: { value: 260, min: 200, max: 350, step: 10, unit: 'mm', label: 'Tier Height', group: 'Dimensions' },
-      woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Dowel Wood Finish', group: 'Material' },
-      connectorColor: { value: 'connector_forest_green', options: ['connector_forest_green', 'connector_terracotta', 'connector_stone_grey', 'connector_matte_black', 'connector_white'], label: '3D Printed Joint Color', group: 'Material' }
+      centerTiers: { value: 3, min: 1, max: 5, step: 1, unit: ' tiers', label: 'Center Tower Tiers', group: 'Center Main Stand' },
+
+      hasLeftWing: { value: false, options: [false, true], label: 'Add Left Extension Rack', group: 'Modular Extensions' },
+      leftTiers: { value: 2, min: 1, max: 4, step: 1, unit: ' tiers', label: 'Left Extension Tiers', group: 'Modular Extensions' },
+
+      hasRightWing: { value: false, options: [false, true], label: 'Add Right Extension Rack', group: 'Modular Extensions' },
+      rightTiers: { value: 2, min: 1, max: 4, step: 1, unit: ' tiers', label: 'Right Extension Tiers', group: 'Modular Extensions' },
+
+      extendLeftPort: { value: false, options: [false, true], label: 'Open Left Connector Ports', group: 'Connector Ports & Capping' },
+      extendRightPort: { value: false, options: [false, true], label: 'Open Right Connector Ports', group: 'Connector Ports & Capping' },
+      extendTopPort: { value: false, options: [false, true], label: 'Open Top Connector Ports', group: 'Connector Ports & Capping' },
+
+      dowelDiameter: { value: 22, min: 20, max: 28, step: 1, unit: 'mm', label: 'Heavy Dowel Diameter', group: 'Dimensions & Materials' },
+      bayWidth: { value: 340, min: 260, max: 480, step: 10, unit: 'mm', label: 'Bay Width', group: 'Dimensions & Materials' },
+      bayDepth: { value: 320, min: 260, max: 420, step: 10, unit: 'mm', label: 'Rack Depth', group: 'Dimensions & Materials' },
+      tierHeight: { value: 270, min: 200, max: 360, step: 10, unit: 'mm', label: 'Tier Height', group: 'Dimensions & Materials' },
+
+      shelfMaterial: { value: 'mdf_natural', options: ['mdf_natural', 'mdf_black', 'beech_natural'], label: 'Shelf Panel Material', group: 'Dimensions & Materials' },
+      woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Dowel Wood Finish', group: 'Dimensions & Materials' },
+      connectorColor: { value: 'connector_forest_green', options: ['connector_forest_green', 'connector_terracotta', 'connector_stone_grey', 'connector_matte_black', 'connector_white'], label: '3D Printed Joint Color', group: 'Dimensions & Materials' }
     },
     buildGraph: (p) => {
-      const graph = { dowelRods: [], connectors: [], plantPots: [] };
+      const graph = { dowelRods: [], mdfShelves: [], connectors: [], plantPots: [] };
 
       const dowelDia = p.dowelDiameter;
       const bayW = p.bayWidth;
       const bayD = p.bayDepth;
       const tH = p.tierHeight;
 
-      const bayHeights = [p.leftTierCount, p.centerTierCount, p.rightTierCount, p.rightTierCount];
-      const activeBays = Math.min(p.bays, 4);
+      // Determine active bay columns
+      // Center bay is always at bay index 0 (or centered)
+      const activeBaysList = [];
 
-      // Node Key Map to store connector types at grid coordinates (bayIndex, tierIndex, front/back)
+      if (p.hasLeftWing) {
+        activeBaysList.push({ bIdx: -1, tiers: p.leftTiers, isCenter: false });
+      }
+      activeBaysList.push({ bIdx: 0, tiers: p.centerTiers, isCenter: true });
+      if (p.hasRightWing) {
+        activeBaysList.push({ bIdx: 1, tiers: p.rightTiers, isCenter: false });
+      }
+
+      // Map bay index to tier count
+      const bayTierMap = new Map();
+      activeBaysList.forEach(item => bayTierMap.set(item.bIdx, item.tiers));
+
+      const minB = Math.min(...activeBaysList.map(a => a.bIdx));
+      const maxB = Math.max(...activeBaysList.map(a => a.bIdx));
+
+      // Build Outer Dowel Frame & Nodes
       const gridConnectors = new Map();
-
       const getCoordKey = (bIdx, tIdx, isBack) => `${bIdx}_${tIdx}_${isBack ? 'B' : 'F'}`;
 
-      // Build Horizontal & Vertical Structural Frame Grid
-      for (let b = 0; b <= activeBays; b++) {
+      for (let b = minB; b <= maxB + 1; b++) {
         const xPos = b * bayW;
 
-        // Max tier height for this pillar column
-        let leftB = Math.max(0, b - 1);
-        let rightB = Math.min(activeBays - 1, b);
-        let colTiers = Math.max(bayHeights[leftB] || 1, bayHeights[rightB] || 1);
+        const leftT = bayTierMap.get(b - 1) || 0;
+        const rightT = bayTierMap.get(b) || 0;
+        const colTiers = Math.max(leftT, rightT);
+
+        if (colTiers === 0) continue;
 
         for (let t = 0; t <= colTiers; t++) {
           const yPos = t * tH;
 
-          // Front Pillar Node (xPos, yPos, 0)
-          gridConnectors.set(getCoordKey(b, t, false), { x: xPos, y: yPos, z: 0, b, t, isBack: false });
-          // Back Pillar Node (xPos, yPos, bayD)
-          gridConnectors.set(getCoordKey(b, t, true), { x: xPos, y: yPos, z: bayD, b, t, isBack: true });
+          // Register node coordinates
+          gridConnectors.set(getCoordKey(b, t, false), { x: xPos, y: yPos, z: 0, b, t, isBack: false, maxColT: colTiers });
+          gridConnectors.set(getCoordKey(b, t, true), { x: xPos, y: yPos, z: bayD, b, t, isBack: true, maxColT: colTiers });
 
-          // Vertical Dowel Leg Segment (between t-1 and t)
+          // Vertical Dowel Leg
           if (t > 0) {
             const rodLen = tH - dowelDia;
             const midY = yPos - tH / 2;
@@ -85,16 +109,17 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // Horizontal Connecting Rails & Slatted Dowel Platforms
-      for (let b = 0; b < activeBays; b++) {
+      // Outer Perimeter Rails & Clean MDF Shelf Panels per Active Bay
+      activeBaysList.forEach((bayInfo) => {
+        const b = bayInfo.bIdx;
         const xStart = b * bayW;
         const xMid = xStart + bayW / 2;
-        const maxTiers = bayHeights[b] || 1;
+        const bTiers = bayInfo.tiers;
 
-        for (let t = 1; t <= maxTiers; t++) {
+        for (let t = 1; t <= bTiers; t++) {
           const yPos = t * tH;
 
-          // Front Horizontal Depth Rail
+          // 1. Front Horizontal Perimeter Rail
           graph.dowelRods.push({
             id: `rod_h_x_front_b${b}_t${t}`,
             position: [xMid, yPos, 0],
@@ -104,7 +129,7 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // Back Horizontal Depth Rail
+          // 2. Back Horizontal Perimeter Rail
           graph.dowelRods.push({
             id: `rod_h_x_back_b${b}_t${t}`,
             position: [xMid, yPos, bayD],
@@ -114,51 +139,86 @@ const ALL_PRODUCTS = [
             material: p.woodFinish
           });
 
-          // Side Depth Tie Rods
-          graph.dowelRods.push({
-            id: `rod_h_z_left_b${b}_t${t}`,
-            position: [xStart, yPos, bayD / 2],
-            length: bayD - dowelDia,
-            diameter: dowelDia,
-            rotation: [Math.PI / 2, 0, 0],
-            material: p.woodFinish
-          });
-
-          // 4 Slatted Platform Dowels per tier
-          const slatCount = 4;
-          const slatSpacing = (bayD - 40) / (slatCount - 1);
-          for (let s = 0; s < slatCount; s++) {
-            const zSlat = 20 + s * slatSpacing;
+          // 3. Left & Right Side Depth Perimeter Rails
+          if (b === minB || (bayTierMap.get(b - 1) || 0) < t) {
             graph.dowelRods.push({
-              id: `slat_b${b}_t${t}_s${s}`,
-              position: [xMid, yPos + 6, zSlat],
-              length: bayW - 10,
-              diameter: dowelDia * 0.75,
-              rotation: [0, 0, Math.PI / 2],
+              id: `rod_h_z_left_b${b}_t${t}`,
+              position: [xStart, yPos, bayD / 2],
+              length: bayD - dowelDia,
+              diameter: dowelDia,
+              rotation: [Math.PI / 2, 0, 0],
               material: p.woodFinish
             });
           }
 
-          // Ceramic Plant Pot on Top of Tier
+          if (b === maxB || (bayTierMap.get(b + 1) || 0) < t) {
+            graph.dowelRods.push({
+              id: `rod_h_z_right_b${b}_t${t}`,
+              position: [xStart + bayW, yPos, bayD / 2],
+              length: bayD - dowelDia,
+              diameter: dowelDia,
+              rotation: [Math.PI / 2, 0, 0],
+              material: p.woodFinish
+            });
+          }
+
+          // 4. CLEAN MDF SHELF INSERT PANEL (Replaces internal dowel clutter!)
+          graph.mdfShelves.push({
+            id: `mdf_shelf_b${b}_t${t}`,
+            position: [xMid, yPos + 6, bayD / 2],
+            width: bayW - dowelDia - 6,
+            depth: bayD - dowelDia - 6,
+            thickness: 12,
+            material: p.shelfMaterial
+          });
+
+          // 5. Ceramic Plant Pot on top of MDF shelf panel
           const potColors = ['ceramic_white', 'ceramic_terracotta', 'ceramic_charcoal'];
           graph.plantPots.push({
             id: `plant_pot_b${b}_t${t}`,
-            position: [xMid, yPos + 12, bayD / 2],
-            radius: 32,
-            height: 55,
-            color: potColors[(b + t) % potColors.length]
+            position: [xMid, yPos + 18, bayD / 2],
+            radius: 35,
+            height: 60,
+            color: potColors[Math.abs(b + t) % potColors.length]
           });
         }
-      }
+      });
 
-      // Generate 3D Printed Connectors at Grid Nodes
+      // Practical 3D Printed Connector Capping & Socket Port Logic
       for (const [key, node] of gridConnectors.entries()) {
         const isBottom = node.t === 0;
+
+        const isLeftBoundary = node.b === minB;
+        const isRightBoundary = node.b === maxB + 1;
+        const isTopBoundary = node.t === node.maxColT;
+
+        const openPorts = {
+          px: true,
+          nx: true,
+          py: true,
+          ny: true,
+          pz: true
+        };
+
+        // Determine if left (-X) port should be capped or open
+        if (isLeftBoundary) {
+          openPorts.nx = p.extendLeftPort;
+        }
+
+        // Determine if right (+X) port should be capped or open
+        if (isRightBoundary) {
+          openPorts.px = p.extendRightPort;
+        }
+
+        // Determine if top (+Y) port should be capped or open
+        if (isTopBoundary) {
+          openPorts.py = p.extendTopPort;
+        }
 
         let connType = '3way';
         if (isBottom) {
           connType = 'foot';
-        } else if (node.b > 0 && node.b < activeBays) {
+        } else if (!isLeftBoundary && !isRightBoundary) {
           connType = '4way';
         }
 
@@ -167,7 +227,8 @@ const ALL_PRODUCTS = [
           type: connType,
           position: [node.x, node.y, node.z],
           diameter: dowelDia,
-          color: p.connectorColor
+          color: p.connectorColor,
+          openPorts: openPorts
         });
       }
 

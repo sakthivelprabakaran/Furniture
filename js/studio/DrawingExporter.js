@@ -1,6 +1,6 @@
 /**
  * DrawingExporter.js — Technical Drawing & Engineering Blueprint Generator
- * Supports MODUPLANT Modular Plant Stand & Achuva Spice Rack
+ * Supports MODUPLANT V2 Modular Plant Stand & Achuva Spice Rack
  */
 
 export class DrawingExporter {
@@ -9,12 +9,14 @@ export class DrawingExporter {
   }
 
   generateModuplantFrontView(params) {
-    const activeBays = Math.min(params.bays, 4);
-    const bayHeights = [params.leftTierCount, params.centerTierCount, params.rightTierCount, params.rightTierCount];
-    const maxTiers = Math.max(...bayHeights);
+    const hasLeft = params.hasLeftWing;
+    const hasRight = params.hasRightWing;
 
-    const w = activeBays * params.bayWidth;
-    const h = maxTiers * params.tierHeight + 60;
+    const bCount = (hasLeft ? 1 : 0) + 1 + (hasRight ? 1 : 0);
+    const w = bCount * params.bayWidth;
+    const maxT = Math.max(params.centerTiers, hasLeft ? params.leftTiers : 0, hasRight ? params.rightTiers : 0);
+    const h = maxT * params.tierHeight + 60;
+
     const scale = 0.55;
     const paddingX = 50;
     const paddingY = 40;
@@ -29,51 +31,47 @@ export class DrawingExporter {
     svgContent += `<line x1="15" y1="${yBase}" x2="${svgW - 15}" y2="${yBase}" stroke="#666" stroke-dasharray="4,2" stroke-width="1"/>`;
     svgContent += `<text x="20" y="${yBase + 16}" fill="#888" font-size="9" font-weight="bold">DATUM FLOOR LEVEL (0,0)</text>`;
 
-    // Render Grid Pillars & Shelves
-    for (let b = 0; b <= activeBays; b++) {
+    // Active bays
+    const bays = [];
+    if (hasLeft) bays.push({ label: 'LEFT WING', tiers: params.leftTiers, idx: 0 });
+    bays.push({ label: 'CENTER TOWER', tiers: params.centerTiers, idx: bays.length });
+    if (hasRight) bays.push({ label: 'RIGHT WING', tiers: params.rightTiers, idx: bays.length });
+
+    // Render Grid Pillars & MDF Shelves
+    bays.forEach((bay, i) => {
+      const xStart = paddingX + i * params.bayWidth * scale;
+      const xEnd = xStart + params.bayWidth * scale;
+      const xMid = (xStart + xEnd) / 2;
+
+      for (let t = 1; t <= bay.tiers; t++) {
+        const yNode = yBase - t * params.tierHeight * scale;
+
+        // Outer Rail Line
+        svgContent += `<line x1="${xStart + 6}" y1="${yNode}" x2="${xEnd - 6}" y2="${yNode}" stroke="#4fc3f7" stroke-width="3"/>`;
+
+        // MDF Shelf Insert Box
+        svgContent += `<rect x="${xStart + 10}" y="${yNode - 4}" width="${params.bayWidth * scale - 20}" height="8" fill="none" stroke="#d4a373" stroke-width="1.5" rx="2" class="cad-shape-shelf"/>`;
+
+        // Plant Pot Icon
+        svgContent += `<rect x="${xMid - 10}" y="${yNode - 26}" width="20" height="22" fill="none" stroke="#26a69a" stroke-width="1.5" rx="3"/>`;
+        svgContent += `<circle cx="${xMid}" cy="${yNode - 32}" r="8" fill="none" stroke="#26a69a" stroke-width="1.2" stroke-dasharray="2,2"/>`;
+      }
+    });
+
+    // Connector Node Dots
+    for (let b = 0; b <= bCount; b++) {
       const xPos = paddingX + b * params.bayWidth * scale;
-
-      let leftB = Math.max(0, b - 1);
-      let rightB = Math.min(activeBays - 1, b);
-      let colTiers = Math.max(bayHeights[leftB] || 1, bayHeights[rightB] || 1);
-
-      const colH = colTiers * params.tierHeight * scale;
-      const yTop = yBase - colH;
-
-      // Vertical Pillar Line
-      svgContent += `<rect x="${xPos - 5}" y="${yTop}" width="10" height="${colH}" fill="none" stroke="#d4a373" stroke-width="1.5" class="cad-shape-pillar"/>`;
-
-      // 3D Printed Connector Dots
-      for (let t = 0; t <= colTiers; t++) {
+      for (let t = 0; t <= maxT; t++) {
         const yNode = yBase - t * params.tierHeight * scale;
         const color = t === 0 ? '#486e42' : '#ff9800';
         svgContent += `<circle cx="${xPos}" cy="${yNode}" r="6" fill="none" stroke="${color}" stroke-width="1.5"/>`;
       }
     }
 
-    // Render Horizontal Bay Rails & Plant Pots
-    for (let b = 0; b < activeBays; b++) {
-      const xStart = paddingX + b * params.bayWidth * scale;
-      const xEnd = xStart + params.bayWidth * scale;
-      const xMid = (xStart + xEnd) / 2;
-      const bTiers = bayHeights[b] || 1;
-
-      for (let t = 1; t <= bTiers; t++) {
-        const yNode = yBase - t * params.tierHeight * scale;
-
-        // Slatted Shelf Rail
-        svgContent += `<line x1="${xStart + 6}" y1="${yNode}" x2="${xEnd - 6}" y2="${yNode}" stroke="#4fc3f7" stroke-width="3"/>`;
-
-        // Plant Pot Icon
-        svgContent += `<rect x="${xMid - 10}" y="${yNode - 22}" width="20" height="22" fill="none" stroke="#26a69a" stroke-width="1.5" rx="3"/>`;
-        svgContent += `<circle cx="${xMid}" cy="${yNode - 28}" r="8" fill="none" stroke="#26a69a" stroke-width="1.2" stroke-dasharray="2,2"/>`;
-      }
-    }
-
-    // Dimensions
+    // Dimension Label
     svgContent += `
       <line x1="${paddingX}" y1="${yBase + 35}" x2="${paddingX + w * scale}" y2="${yBase + 35}" stroke="#4fc3f7" stroke-width="1" marker-start="url(#arrBlue)" marker-end="url(#arrBlue)"/>
-      <text x="${paddingX + w * scale / 2}" y="${yBase + 28}" fill="#4fc3f7" font-size="10" font-weight="bold" text-anchor="middle" class="dim-blue">TOTAL RACK WIDTH: ${w} mm (${activeBays} BAYS)</text>
+      <text x="${paddingX + w * scale / 2}" y="${yBase + 28}" fill="#4fc3f7" font-size="10" font-weight="bold" text-anchor="middle" class="dim-blue">TOTAL RACK WIDTH: ${w} mm (${bCount} BAYS)</text>
     `;
 
     return `
@@ -90,7 +88,7 @@ export class DrawingExporter {
 
   generateModuplantSideView(params) {
     const d = params.bayDepth;
-    const h = params.centerTierCount * params.tierHeight + 60;
+    const h = params.centerTiers * params.tierHeight + 60;
     const scale = 0.6;
     const paddingX = 50;
     const paddingY = 40;
@@ -107,8 +105,8 @@ export class DrawingExporter {
           </marker>
         </defs>
         <line x1="15" y1="${yBase}" x2="${svgW - 15}" y2="${yBase}" stroke="#666" stroke-dasharray="4,2" stroke-width="1"/>
-        <rect x="${paddingX}" y="${yBase - params.centerTierCount * params.tierHeight * scale}" width="10" height="${params.centerTierCount * params.tierHeight * scale}" fill="none" stroke="#d4a373" stroke-width="1.5" class="cad-shape-pillar"/>
-        <rect x="${paddingX + d * scale - 10}" y="${yBase - params.centerTierCount * params.tierHeight * scale}" width="10" height="${params.centerTierCount * params.tierHeight * scale}" fill="none" stroke="#d4a373" stroke-width="1.5" class="cad-shape-pillar"/>
+        <rect x="${paddingX}" y="${yBase - params.centerTiers * params.tierHeight * scale}" width="10" height="${params.centerTiers * params.tierHeight * scale}" fill="none" stroke="#d4a373" stroke-width="1.5" class="cad-shape-pillar"/>
+        <rect x="${paddingX + d * scale - 10}" y="${yBase - params.centerTiers * params.tierHeight * scale}" width="10" height="${params.centerTiers * params.tierHeight * scale}" fill="none" stroke="#d4a373" stroke-width="1.5" class="cad-shape-pillar"/>
         <line x1="${paddingX}" y1="${yBase + 35}" x2="${paddingX + d * scale}" y2="${yBase + 35}" stroke="#4fc3f7" stroke-width="1" marker-start="url(#arrSide)" marker-end="url(#arrSide)"/>
         <text x="${paddingX + d * scale / 2}" y="${yBase + 28}" fill="#4fc3f7" font-size="10" font-weight="bold" text-anchor="middle" class="dim-blue">FRAME DEPTH: ${d} mm</text>
       </svg>
@@ -189,8 +187,8 @@ export class DrawingExporter {
           <div class="blueprint-container">
             <div class="blueprint-header">
               <div class="blueprint-title-block">
-                <h2>📐 MODUPLANT MODULAR PLANT STAND — TECHNICAL BLUEPRINT</h2>
-                <span class="blueprint-subtitle">HEAVY-DUTY DOWEL (Ø${rawParams.dowelDiameter}mm) + 3D PRINTED PETG CONNECTOR SYSTEM</span>
+                <h2>📐 MODUPLANT MODULAR PLANT STAND V2 — TECHNICAL BLUEPRINT</h2>
+                <span class="blueprint-subtitle">OUTER DOWEL SKELETON (Ø${rawParams.dowelDiameter}mm) + MDF SHELVES + CAPPED 3D PRINTED JOINTS</span>
               </div>
               <div class="blueprint-actions">
                 <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF Blueprint</button>
@@ -200,10 +198,10 @@ export class DrawingExporter {
 
             <div class="blueprint-body">
               <div class="blueprint-card page-break-after">
-                <h3 class="blueprint-card-title">PAGE 1: MULTI-BAY GRID ASSEMBLY ORTHOGRAPHIC SUITE</h3>
+                <h3 class="blueprint-card-title">PAGE 1: OUTSIDE SKELETON ASSEMBLY ORTHOGRAPHIC SUITE</h3>
                 <div class="drawings-grid">
                   <div class="drawing-box">
-                    <div class="drawing-label">FRONT ELEVATION GRID ASSEMBLY</div>
+                    <div class="drawing-label">FRONT ELEVATION SKELETON VIEW</div>
                     ${frontSvg}
                   </div>
                   <div class="drawing-box">
@@ -221,17 +219,18 @@ export class DrawingExporter {
                   </thead>
                   <tbody>
                     ${bom.dowelRods?.map((r, i) => `<tr><td>${i + 1}</td><td>${r.name}</td><td>${r.spec}</td><td>${r.count}</td></tr>`).join('') || ''}
-                    ${bom.connectors?.map((c, i) => `<tr><td>${(bom.dowelRods?.length || 0) + i + 1}</td><td>${c.name}</td><td>${c.spec}</td><td>${c.count}</td></tr>`).join('') || ''}
-                    ${bom.plantPots?.map((p, i) => `<tr><td>${(bom.dowelRods?.length || 0) + (bom.connectors?.length || 0) + i + 1}</td><td>${p.name}</td><td>${p.spec}</td><td>${p.count}</td></tr>`).join('') || ''}
+                    ${bom.mdfShelves?.map((m, i) => `<tr><td>${(bom.dowelRods?.length || 0) + i + 1}</td><td>${m.name}</td><td>${m.spec}</td><td>${m.count}</td></tr>`).join('') || ''}
+                    ${bom.connectors?.map((c, i) => `<tr><td>${(bom.dowelRods?.length || 0) + (bom.mdfShelves?.length || 0) + i + 1}</td><td>${c.name}</td><td>${c.spec}</td><td>${c.count}</td></tr>`).join('') || ''}
+                    ${bom.plantPots?.map((p, i) => `<tr><td>${(bom.dowelRods?.length || 0) + (bom.mdfShelves?.length || 0) + (bom.connectors?.length || 0) + i + 1}</td><td>${p.name}</td><td>${p.spec}</td><td>${p.count}</td></tr>`).join('') || ''}
                   </tbody>
                 </table>
               </div>
 
               <div class="blueprint-title-footer">
-                <div class="footer-box"><div class="lbl">PROJECT</div><div class="val">MODUPLANT SYSTEM</div></div>
+                <div class="footer-box"><div class="lbl">PROJECT</div><div class="val">MODUPLANT V2</div></div>
                 <div class="footer-box"><div class="lbl">DOWEL DIA</div><div class="val">Ø${rawParams.dowelDiameter} MM</div></div>
                 <div class="footer-box"><div class="lbl">CONNECTOR</div><div class="val">3D PRINTED PETG</div></div>
-                <div class="footer-box"><div class="lbl">BAYS</div><div class="val">${rawParams.bays} BAYS</div></div>
+                <div class="footer-box"><div class="lbl">SHELVES</div><div class="val">MDF PANELS</div></div>
                 <div class="footer-box"><div class="lbl">TOTAL PARTS</div><div class="val">${bom.totalParts} PCS</div></div>
               </div>
             </div>

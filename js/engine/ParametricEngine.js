@@ -74,6 +74,7 @@ export class ParametricEngine {
 
     const bom = {
       dowelRods: [],
+      mdfShelves: [],
       connectors: [],
       plantPots: [],
       panels: [],
@@ -96,19 +97,28 @@ export class ParametricEngine {
 
       for (const [spec, count] of rodMap.entries()) {
         bom.dowelRods.push({
-          name: `${(this._parameters.woodFinish || 'beech').replace('_', ' ').toUpperCase()} Structural Dowels`,
+          name: `${(this._parameters.woodFinish || 'beech').replace('_', ' ').toUpperCase()} Structural Outer Dowels`,
           spec: spec,
           count: count
         });
       }
     }
 
-    // 2. MODUPLANT System 3D Printed Connectors
+    // 2. MDF Shelf Panels
+    if (this._graph.mdfShelves) {
+      bom.mdfShelves.push({
+        name: 'MDF / Wood Shelf Insert Panels',
+        spec: `${Math.round(this._graph.mdfShelves[0]?.width || 300)}x${Math.round(this._graph.mdfShelves[0]?.depth || 300)}x12mm`,
+        count: this._graph.mdfShelves.length
+      });
+    }
+
+    // 3. MODUPLANT System Practical 3D Printed Connectors
     if (this._graph.connectors) {
       const connMap = new Map();
       this._graph.connectors.forEach(c => {
         const typeName = c.type === '3way' ? '3-Way Corner Joint' : (c.type === '4way' ? '4-Way Cross Joint' : (c.type === '5way' ? '5-Way Hub Joint' : 'End Cap Foot'));
-        const key = `3D Printed ${typeName} (Ø${c.diameter}mm)`;
+        const key = `Practical 3D Printed ${typeName} (Ø${c.diameter}mm Socket)`;
         connMap.set(key, (connMap.get(key) || 0) + 1);
       });
 
@@ -121,16 +131,16 @@ export class ParametricEngine {
       }
     }
 
-    // 3. Ceramic Plant Pots
+    // 4. Ceramic Plant Pots
     if (this._graph.plantPots) {
       bom.plantPots.push({
         name: 'Ceramic Plant Pots with Foliage',
-        spec: 'Ø64mm x 55mm Height',
+        spec: 'Ø70mm x 60mm Height',
         count: this._graph.plantPots.length
       });
     }
 
-    // 4. Legacy Spice Rack Nodes
+    // 5. Legacy Spice Rack Nodes
     if (this._graph.panels) {
       bom.panels.push({
         name: `${(this._parameters.woodMaterial || 'acacia').replace('_', ' ').toUpperCase()} Solid Wood Shelves`,
@@ -188,6 +198,7 @@ export class ParametricEngine {
     }
 
     bom.totalParts = (this._graph.dowelRods?.length || 0) +
+                     (this._graph.mdfShelves?.length || 0) +
                      (this._graph.connectors?.length || 0) +
                      (this._graph.plantPots?.length || 0) +
                      (this._graph.panels?.length || 0) +
