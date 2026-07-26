@@ -269,7 +269,7 @@ export class MeshFactory {
 
   /**
    * Create Sleek Wall Mount Bracket & Node Connector (Matching Reference Hardware Design)
-   * Features: Rounded square wall plate, cylindrical standoff stem, smooth dowel bore sleeves, & Allen key fasteners.
+   * Features: Rounded square wall plate, cylindrical standoff stem, and correct socket tubes to fix floating dowels.
    */
   createWallMountConnector(dowelDiameter, colorType, openPorts = {}) {
     const group = new THREE.Group();
@@ -277,8 +277,8 @@ export class MeshFactory {
     const metalMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.3 });
 
     const dowelRadius = dowelDiameter / 2;
-    const sleeveRadius = dowelRadius + 4.0;
-    const sleeveLength = 48.0;
+    const outerRadius = dowelRadius + 5.5;
+    const socketLength = 35.0; // CRITICAL: Must be 35.0 so dowels don't float!
     const standoffLength = 32.0;
 
     // 1. Sleek Wall Plate with Rounded Corners (48mm x 48mm, thickness 6mm)
@@ -300,7 +300,7 @@ export class MeshFactory {
     const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth: plateThickness, bevelEnabled: false });
     plateGeo.center();
     const plateMesh = new THREE.Mesh(plateGeo, mat);
-    plateMesh.position.z = -standoffLength - plateThickness / 2;
+    plateMesh.position.z = -outerRadius - standoffLength - plateThickness / 2;
     group.add(plateMesh);
 
     // 2 Countersunk Screw Hole Insets on Backing Plate
@@ -309,42 +309,52 @@ export class MeshFactory {
     holeOffsets.forEach(([hx, hy]) => {
       const screwHeadGeo = new THREE.CylinderGeometry(3.8, 2.2, 3.0, 16);
       const screwHeadMesh = new THREE.Mesh(screwHeadGeo, metalMat);
-      screwHeadMesh.position.set(hx, hy, -standoffLength + 1.5);
+      screwHeadMesh.position.set(hx, hy, -outerRadius - standoffLength + 1.5);
       screwHeadMesh.rotation.x = Math.PI / 2;
       group.add(screwHeadMesh);
     });
 
-    // 2. Cylindrical Standoff Stem extending from wall to dowel sleeve
+    // 2. Cylindrical Standoff Stem extending from wall to central joint
     const stemRadius = dowelRadius + 2.5;
     const stemGeo = new THREE.CylinderGeometry(stemRadius, stemRadius * 1.1, standoffLength, 24);
     const stemMesh = new THREE.Mesh(stemGeo, mat);
-    stemMesh.position.z = -standoffLength / 2;
+    stemMesh.position.z = -outerRadius - standoffLength / 2;
     stemMesh.rotation.x = Math.PI / 2;
     group.add(stemMesh);
 
-    // 3. Main Vertical / Cross Sleeve Cylinder
-    const sleeveGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, sleeveLength, 28);
-    const sleeveMesh = new THREE.Mesh(sleeveGeo, mat);
-    group.add(sleeveMesh);
+    // 3. Central Sleek Core Cylinder (Replaces bulbous sphere)
+    const coreGeo = new THREE.CylinderGeometry(outerRadius, outerRadius, outerRadius * 2, 24);
+    const coreMesh = new THREE.Mesh(coreGeo, mat);
+    group.add(coreMesh);
 
-    // Inner Bore Dark Inset
-    const boreGeo = new THREE.CylinderGeometry(dowelRadius + 0.3, dowelRadius + 0.3, sleeveLength + 1, 24);
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
-    const boreMesh = new THREE.Mesh(boreGeo, darkMat);
-    group.add(boreMesh);
+    // 4. Socket +X (Right)
+    const sockPX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.px);
+    sockPX.rotation.z = -Math.PI / 2;
+    group.add(sockPX);
 
-    // 4. Branch Socket for Horizontal Dowels (If open)
-    if (openPorts.px || openPorts.nx) {
-      const branchGeo = new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, 24.0, 24);
-      const branchMesh = new THREE.Mesh(branchGeo, mat);
-      branchMesh.rotation.z = Math.PI / 2;
-      group.add(branchMesh);
-    }
+    // 5. Socket -X (Left)
+    const sockNX = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.nx);
+    sockNX.rotation.z = Math.PI / 2;
+    group.add(sockNX);
 
-    // 5. Side Allen Key Fastener Bolt (Matching Reference Image!)
+    // 6. Socket +Y (Top)
+    const sockPY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.py);
+    group.add(sockPY);
+
+    // 7. Socket -Y (Bottom)
+    const sockNY = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !(openPorts.ny !== undefined ? openPorts.ny : true));
+    sockNY.rotation.x = Math.PI;
+    group.add(sockNY);
+
+    // 8. Socket +Z (Front Depth Arm)
+    const sockPZ = this._createSocketTube(dowelRadius, socketLength, outerRadius, mat, !openPorts.pz);
+    sockPZ.rotation.x = Math.PI / 2;
+    group.add(sockPZ);
+
+    // 9. Side Allen Key Fastener Bolt (Matching Reference Image)
     const boltGeo = new THREE.CylinderGeometry(3.5, 3.5, 4.0, 16);
     const boltMesh = new THREE.Mesh(boltGeo, metalMat);
-    boltMesh.position.set(sleeveRadius - 0.5, 0, 0);
+    boltMesh.position.set(outerRadius - 0.5, 0, 0);
     boltMesh.rotation.z = -Math.PI / 2;
     group.add(boltMesh);
 
