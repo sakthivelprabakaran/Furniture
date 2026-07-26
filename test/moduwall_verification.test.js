@@ -1,14 +1,14 @@
 /**
- * Automated Unit Test Suite: MODUWALL 2D Wall Grid Connection Verification
+ * Automated Unit Test Suite: MODUWALL Grid 2D Reference System Verification
  * Verifies exact 2D single-plane node counts, wall anchor flange counts, 2D sleeve connectors, and port capping.
  */
 
 import { ProductTemplates } from '../js/engine/ProductTemplates.js';
 
 function testModuwallConnections() {
-  console.log('🧪 Running MODUWALL 2D Wall Grid Automated Unit Test Suite...\n');
+  console.log('🧪 Running MODUWALL Grid 2D Reference System Automated Unit Test Suite...\n');
 
-  const template = ProductTemplates.getTemplate('moduwall_system');
+  const template = ProductTemplates.getTemplate('moduwall_wall_grid');
   let passedAll = true;
 
   function buildGraph(params) {
@@ -23,8 +23,8 @@ function testModuwallConnections() {
   // -------------------------------------------------------------
   // TEST 1: 2D Grid Dimensions (3 Bays Wide x 3 Rows High)
   // -------------------------------------------------------------
-  console.log('📋 Test 1: 2D Grid Dimensions (3 Bays Wide x 3 Rows High)');
-  const g1 = buildGraph({ gridColumns: 3, gridRows: 3, bayWidth: 340, bayHeight: 300, rackDepth: 180 });
+  console.log('📋 Test 1: 2D Reference Grid Dimensions (3 Bays Wide x 3 Rows High)');
+  const g1 = buildGraph({ gridColumns: 3, gridRows: 3, bayWidth: 340, bayHeight: 300 });
 
   // 1.1 Check Wall Anchor Bracket Count (Top & Bottom Ends)
   const expectedWallConnectors = (3 + 1) * 2; // 4 cols * 2 anchor rows (top and bottom) = 8 wall anchors
@@ -42,15 +42,6 @@ function testModuwallConnections() {
     passedAll = false;
   } else {
     console.log(`  ✅ Intermediate 2D Sleeve Connector Count is exact (${expectedConnectors} connectors).`);
-  }
-
-  // 1.3 Check Surface-Resting MDF Shelf Count
-  const expectedShelves = 3 * (3 - 1); // 3 cols * 2 shelf tiers = 6 shelves
-  if (g1.mdfShelves.length !== expectedShelves) {
-    console.error(`  ❌ FAILED: Expected ${expectedShelves} MDF shelves, found ${g1.mdfShelves.length}`);
-    passedAll = false;
-  } else {
-    console.log(`  ✅ Surface-Resting MDF Shelf Count is exact (${expectedShelves} shelves).`);
   }
 
   // -------------------------------------------------------------
@@ -110,9 +101,9 @@ function testModuwallConnections() {
 
   console.log('\n----------------------------------------');
   if (passedAll) {
-    console.log('🎉 ALL MODUWALL UNIT TESTS PASSED PERFECTLY!');
+    console.log('🎉 ALL MODUWALL GRID UNIT TESTS PASSED PERFECTLY!');
   } else {
-    console.error('💥 MODUWALL UNIT TESTS FAILED — Refinement Required!');
+    console.error('💥 MODUWALL GRID UNIT TESTS FAILED — Refinement Required!');
     process.exit(1);
   }
 }

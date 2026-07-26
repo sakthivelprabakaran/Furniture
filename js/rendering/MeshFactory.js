@@ -758,6 +758,8 @@ export class MeshFactory {
           mesh = this.create4WayCrossConnector(conn.diameter, conn.color, conn.openPorts, conn.cornerType);
         } else if (conn.type === '5way') {
           mesh = this.create5WayHubConnector(conn.diameter, conn.color, conn.openPorts);
+        } else if (conn.openPorts && Object.values(conn.openPorts).some(v => v)) {
+          mesh = this.create4WayCrossConnector(conn.diameter, conn.color, conn.openPorts, conn.cornerType);
         } else {
           mesh = this.createEndCapFoot(conn.diameter, conn.color);
         }
