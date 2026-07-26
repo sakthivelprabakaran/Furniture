@@ -37,8 +37,8 @@ class StudioApp {
     }
     this.scene = new SceneManager(viewport);
 
-    // Load MODUPLANT Modular Plant Stand as default model!
-    this.engine.loadProduct('moduplant_infinite');
+    // Load AXILOCK Connector System as default model preview!
+    this.engine.loadProduct('axilock_visualizer');
 
     // Restore any URL query parameters (from QR code / shared link)
     this._restoreParamsFromURL();
