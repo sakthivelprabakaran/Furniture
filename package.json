@@ -6,7 +6,7 @@
   "main": "server.py",
   "scripts": {
     "start": "python3 server.py",
-    "test": "node test/grid_verification.test.js && node test/moduwall_verification.test.js"
+    "test": "node test/grid_verification.test.js && node test/moduwall_verification.test.js && node test/axilock_verification.test.js"
   },
   "keywords": [
     "threejs",

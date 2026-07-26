@@ -702,5 +702,117 @@ const ALL_PRODUCTS = [
 
       return graph;
     }
+  },
+  {
+    id: 'axilock_visualizer',
+    name: 'AXILOCK — Helical Cam-Ramp Connector System',
+    icon: '🔩',
+    category: 'connector_hardware',
+    description: 'Interactive 3D visualization of the patentable AXILOCK modular dowel connection system with helical cam-ramp locking.',
+    parameters: {
+      hubPorts: { value: 4, min: 2, max: 6, step: 1, unit: ' ports', label: 'Active Hub Ports', group: 'Hub Configuration' },
+      dowelDiameter: { value: 22, options: [18, 22, 25], unit: 'mm', label: 'Dowel Diameter', group: 'Hub Configuration' },
+      dowelLength: { value: 300, min: 150, max: 500, step: 10, unit: 'mm', label: 'Dowel Length', group: 'Hub Configuration' },
+      showCutaway: { value: false, options: [false, true], label: 'Show Internal Cutaway', group: 'Visualization' },
+      showTabs: { value: true, options: [false, true], label: 'Highlight Locking Tabs', group: 'Visualization' },
+      hubColor: { value: 'axilock_hub_charcoal', options: ['axilock_hub_charcoal', 'connector_stone_grey', 'connector_matte_black'], label: 'Hub Color', group: 'Materials & Colors' },
+      connectorColor: { value: 'axilock_connector_white', options: ['axilock_connector_white', 'connector_terracotta', 'connector_forest_green', 'connector_stone_grey'], label: 'End Connector Color', group: 'Materials & Colors' },
+      woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Dowel Wood Finish', group: 'Materials & Colors' }
+    },
+    buildGraph: (p) => {
+      const graph = {
+        dowelRods: [],
+        axilockHubs: [],
+        axilockEndConnectors: [],
+        axilockScrews: []
+      };
+
+      const dowelDia = p.dowelDiameter;
+      const dowelRad = dowelDia / 2;
+      const dowelLen = p.dowelLength;
+      const connectorLength = 24.0;
+      const numPorts = p.hubPorts;
+
+      // Port axis definitions: direction vectors and Euler rotation angles
+      const allAxes = [
+        { key: 'px', dir: [1, 0, 0], rot: [0, 0, -Math.PI / 2] },
+        { key: 'nx', dir: [-1, 0, 0], rot: [0, 0, Math.PI / 2] },
+        { key: 'py', dir: [0, 1, 0], rot: [0, 0, 0] },
+        { key: 'ny', dir: [0, -1, 0], rot: [Math.PI, 0, 0] },
+        { key: 'pz', dir: [0, 0, 1], rot: [Math.PI / 2, 0, 0] },
+        { key: 'nz', dir: [0, 0, -1], rot: [-Math.PI / 2, 0, 0] }
+      ];
+
+      // Determine which ports are active (first N from the list)
+      const activeAxes = allAxes.slice(0, numPorts);
+      const portConfig = {};
+      allAxes.forEach(a => portConfig[a.key] = false);
+      activeAxes.forEach(a => portConfig[a.key] = true);
+
+      // Hub geometry dimensions
+      const hubOuterRadius = dowelRad + 8;
+      const hubFaceOffset = hubOuterRadius * 1.1;
+
+      // 1. Central AXILOCK Hub at origin
+      graph.axilockHubs.push({
+        id: 'axilock_hub_main',
+        position: [0, 0, 0],
+        diameter: dowelDia,
+        color: p.hubColor,
+        portConfig: portConfig,
+        showCutaway: p.showCutaway
+      });
+
+      // 2. End Connectors + Dowels + Screws for each active port
+      activeAxes.forEach((axis) => {
+        const [dx, dy, dz] = axis.dir;
+
+        // End connector positioned at hub socket entrance
+        const connOffset = hubFaceOffset + connectorLength / 2;
+        const connectorPos = [
+          dx * connOffset,
+          dy * connOffset,
+          dz * connOffset
+        ];
+
+        graph.axilockEndConnectors.push({
+          id: `axilock_conn_${axis.key}`,
+          position: connectorPos,
+          rotation: axis.rot,
+          diameter: dowelDia,
+          color: p.connectorColor,
+          tabColor: 'axilock_tab_blue',
+          showTabs: p.showTabs
+        });
+
+        // Dowel rod extending outward from end connector
+        const effectiveDowelLen = dowelLen - connectorLength;
+        const dowelOffset = hubFaceOffset + connectorLength + effectiveDowelLen / 2;
+        const dowelCenter = [
+          dx * dowelOffset,
+          dy * dowelOffset,
+          dz * dowelOffset
+        ];
+
+        graph.dowelRods.push({
+          id: `axilock_dowel_${axis.key}`,
+          position: dowelCenter,
+          length: effectiveDowelLen,
+          diameter: dowelDia,
+          rotation: axis.rot,
+          material: p.woodFinish
+        });
+
+        // M4 screw inside end connector (same position and rotation)
+        graph.axilockScrews.push({
+          id: `axilock_screw_${axis.key}`,
+          position: connectorPos,
+          rotation: axis.rot,
+          length: 30
+        });
+      });
+
+      return graph;
+    }
   }
 ];

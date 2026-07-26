@@ -82,6 +82,37 @@ export class MaterialLibrary {
       metalness: 0.05
     }));
 
+    // 2b. AXILOCK Connector System Materials
+    this.materials.set('axilock_hub_charcoal', new THREE.MeshStandardMaterial({
+      color: 0x3a3d42,
+      roughness: 0.35,
+      metalness: 0.12
+    }));
+
+    this.materials.set('axilock_connector_white', new THREE.MeshStandardMaterial({
+      color: 0xf2f0ed,
+      roughness: 0.28,
+      metalness: 0.06
+    }));
+
+    this.materials.set('axilock_tab_blue', new THREE.MeshStandardMaterial({
+      color: 0x3b7dd8,
+      roughness: 0.3,
+      metalness: 0.15
+    }));
+
+    this.materials.set('axilock_ramp_orange', new THREE.MeshStandardMaterial({
+      color: 0xe07830,
+      roughness: 0.3,
+      metalness: 0.15
+    }));
+
+    this.materials.set('axilock_metal_brushed', new THREE.MeshStandardMaterial({
+      color: 0xc8c8c8,
+      roughness: 0.2,
+      metalness: 0.85
+    }));
+
     // 3. Plant Pots & Foliage
     this.materials.set('ceramic_white', new THREE.MeshStandardMaterial({
       color: 0xf8f9fa,

@@ -197,6 +197,31 @@ export class ParametricEngine {
       });
     }
 
+    // 8. AXILOCK Connector System Parts
+    if (this._graph.axilockHubs) {
+      bom.connectors.push({
+        name: 'AXILOCK Chamfered Polyhedron Hub',
+        spec: `${this._graph.axilockHubs[0]?.portConfig ? Object.values(this._graph.axilockHubs[0].portConfig).filter(v => v).length : 4}-Way, Ø${this._parameters.dowelDiameter || 22}mm Socket`,
+        count: this._graph.axilockHubs.length
+      });
+    }
+
+    if (this._graph.axilockEndConnectors) {
+      bom.connectors.push({
+        name: 'AXILOCK Helical Cam-Ramp End Connector',
+        spec: `Ø${this._parameters.dowelDiameter || 22}mm, 3-Tab 20° Twist Lock`,
+        count: this._graph.axilockEndConnectors.length
+      });
+    }
+
+    if (this._graph.axilockScrews) {
+      bom.connectors.push({
+        name: 'M4 × 30mm Pan Head Stainless Steel Wood Screw',
+        spec: 'Phillips #2 Drive',
+        count: this._graph.axilockScrews.length
+      });
+    }
+
     bom.totalParts = (this._graph.dowelRods?.length || 0) +
                      (this._graph.mdfShelves?.length || 0) +
                      (this._graph.connectors?.length || 0) +
@@ -207,7 +232,10 @@ export class ParametricEngine {
                      (this._graph.pins?.length || 0) +
                      (this._graph.guardRails?.length || 0) +
                      (this._graph.topPegs?.length || 0) +
-                     (this._graph.jars?.length || 0);
+                     (this._graph.jars?.length || 0) +
+                     (this._graph.axilockHubs?.length || 0) +
+                     (this._graph.axilockEndConnectors?.length || 0) +
+                     (this._graph.axilockScrews?.length || 0);
 
     this._bom = bom;
   }
