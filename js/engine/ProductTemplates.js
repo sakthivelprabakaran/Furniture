@@ -750,8 +750,8 @@ const ALL_PRODUCTS = [
       activeAxes.forEach(a => portConfig[a.key] = true);
 
       // Hub geometry dimensions
-      const hubOuterRadius = dowelRad + 8;
-      const hubFaceOffset = hubOuterRadius * 1.1;
+      const hubH = 26.0; // Hub half-width (face is at 26mm from center)
+      const insertionDepth = 12.0; // 12mm inserted inside hub socket
 
       // 1. Central AXILOCK Hub at origin
       graph.axilockHubs.push({
@@ -767,12 +767,12 @@ const ALL_PRODUCTS = [
       activeAxes.forEach((axis) => {
         const [dx, dy, dz] = axis.dir;
 
-        // End connector positioned at hub socket entrance
-        const connOffset = hubFaceOffset + connectorLength / 2;
+        // End connector center offset: front face is at (hubH - insertionDepth) = 14mm
+        const connCenterOffset = (hubH - insertionDepth) + connectorLength / 2; // 26mm from center
         const connectorPos = [
-          dx * connOffset,
-          dy * connOffset,
-          dz * connOffset
+          dx * connCenterOffset,
+          dy * connCenterOffset,
+          dz * connCenterOffset
         ];
 
         graph.axilockEndConnectors.push({
@@ -785,13 +785,14 @@ const ALL_PRODUCTS = [
           showTabs: p.showTabs
         });
 
-        // Dowel rod extending outward from end connector
-        const effectiveDowelLen = dowelLen - connectorLength;
-        const dowelOffset = hubFaceOffset + connectorLength + effectiveDowelLen / 2;
+        // Dowel rod starts at back face of end connector (14mm + 24mm = 38mm from center)
+        const dowelStartOffset = (hubH - insertionDepth) + connectorLength; // 38mm from center
+        const effectiveDowelLen = dowelLen - insertionDepth;
+        const dowelCenterOffset = dowelStartOffset + (effectiveDowelLen - connectorLength) / 2;
         const dowelCenter = [
-          dx * dowelOffset,
-          dy * dowelOffset,
-          dz * dowelOffset
+          dx * dowelCenterOffset,
+          dy * dowelCenterOffset,
+          dz * dowelCenterOffset
         ];
 
         graph.dowelRods.push({
@@ -803,7 +804,7 @@ const ALL_PRODUCTS = [
           material: p.woodFinish
         });
 
-        // M4 screw inside end connector (same position and rotation)
+        // M4 screw inside end connector
         graph.axilockScrews.push({
           id: `axilock_screw_${axis.key}`,
           position: connectorPos,

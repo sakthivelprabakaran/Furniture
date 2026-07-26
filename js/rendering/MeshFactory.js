@@ -388,86 +388,220 @@ export class MeshFactory {
   }
 
   /**
-   * Create AXILOCK Hub Connector
+   * Create AXILOCK Chamfered Polyhedron Hub Connector (Truncated Cube with Circular Socket Bores)
    */
-  createAxilockHub(dowelDiameter, hubColor, portConfig, showCutaway) {
+  createAxilockHub(dowelDiameter = 22, hubColor = 'axilock_hub_charcoal', portConfig = {}, showCutaway = false) {
     const group = new THREE.Group();
-    const mat = this.materials.getMaterial(hubColor || 'connector_forest_green');
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-    const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.7 });
+    const mat = this.materials.getMaterial(hubColor || 'axilock_hub_charcoal');
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
+    const orangeMat = this.materials.getMaterial('axilock_ramp_orange');
 
     const dowelRadius = dowelDiameter / 2;
-    const outerRadius = dowelRadius + 8;
-    const socketDepth = 28.0;
-    const boreRadius = dowelRadius + 0.4;
-    const hubSize = outerRadius * 2.2;
+    const connRadius = dowelRadius + 1.5; // End connector OD radius (12.5mm for 22mm dowel)
+    const boreRadius = connRadius + 0.3; // Socket bore radius (12.8mm)
+    const hubH = 26.0; // Half-width = 26mm (Overall 52mm block)
+    const chamfer = 6.0;
+    const A = hubH - chamfer; // 20mm
+    const socketDepth = 22.0;
 
-    // Hub body
-    const hubGeo = new THREE.DodecahedronGeometry(hubSize, 1);
+    // Build chamfered polyhedron hub body with 6 socket bore openings
+    const hubGeo = new THREE.BufferGeometry();
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+
+    function addTriangle(p1, p2, p3, norm) {
+      vertices.push(...p1, ...p2, ...p3);
+      normals.push(...norm, ...norm, ...norm);
+      uvs.push(0, 0, 1, 0, 0.5, 1);
+    }
+
+    function addQuad(p1, p2, p3, p4, norm) {
+      addTriangle(p1, p2, p3, norm);
+      addTriangle(p1, p3, p4, norm);
+    }
+
+    // 1. CORNER TRUNCATIONS (8 Triangular faces)
+    const cornerSign = [
+      [1, 1, 1], [-1, 1, 1], [-1, -1, 1], [1, -1, 1],
+      [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]
+    ];
+    cornerSign.forEach(([sx, sy, sz]) => {
+      const v1 = [sx * A, sy * hubH, sz * A];
+      const v2 = [sx * hubH, sy * A, sz * A];
+      const v3 = [sx * A, sy * A, sz * hubH];
+      const n = new THREE.Vector3(sx, sy, sz).normalize().toArray();
+      if ((sx * sy * sz) > 0) {
+        addTriangle(v1, v2, v3, n);
+      } else {
+        addTriangle(v1, v3, v2, n);
+      }
+    });
+
+    // 2. EDGE CHAMFERS (12 Rectangular faces)
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sy, sz]) => {
+      const p1 = [-A, sy * hubH, sz * A];
+      const p2 = [A, sy * hubH, sz * A];
+      const p3 = [A, sy * A, sz * hubH];
+      const p4 = [-A, sy * A, sz * hubH];
+      const n = new THREE.Vector3(0, sy, sz).normalize().toArray();
+      if (sy * sz > 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+      const p1 = [sx * hubH, -A, sz * A];
+      const p2 = [sx * hubH, A, sz * A];
+      const p3 = [sx * A, A, sz * hubH];
+      const p4 = [sx * A, -A, sz * hubH];
+      const n = new THREE.Vector3(sx, 0, sz).normalize().toArray();
+      if (sx * sz < 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sy]) => {
+      const p1 = [sx * A, sy * hubH, -A];
+      const p2 = [sx * A, sy * hubH, A];
+      const p3 = [sx * hubH, sy * A, A];
+      const p4 = [sx * hubH, sy * A, -A];
+      const n = new THREE.Vector3(sx, sy, 0).normalize().toArray();
+      if (sx * sy > 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    // 3. MAIN FACES WITH CIRCULAR SOCKET HOLES (6 faces)
+    const N = 24;
+    const circlePts = [];
+    for (let i = 0; i < N; i++) {
+      const ang = (i / N) * Math.PI * 2;
+      circlePts.push([Math.cos(ang) * boreRadius, Math.sin(ang) * boreRadius]);
+    }
+
+    const faces = [
+      { dir: [0, 1, 0], rot: [0, 0, 0], key: 'py' },
+      { dir: [0, -1, 0], rot: [Math.PI, 0, 0], key: 'ny' },
+      { dir: [1, 0, 0], rot: [0, 0, -Math.PI / 2], key: 'px' },
+      { dir: [-1, 0, 0], rot: [0, 0, Math.PI / 2], key: 'nx' },
+      { dir: [0, 0, 1], rot: [Math.PI / 2, 0, 0], key: 'pz' },
+      { dir: [0, 0, -1], rot: [-Math.PI / 2, 0, 0], key: 'nz' }
+    ];
+
+    faces.forEach(f => {
+      const isActive = portConfig[f.key] !== false;
+
+      const dummy = new THREE.Object3D();
+      dummy.rotation.set(...f.rot);
+      dummy.position.set(f.dir[0] * hubH, f.dir[1] * hubH, f.dir[2] * hubH);
+      dummy.updateMatrix();
+
+      if (isActive) {
+        for (let i = 0; i < N; i++) {
+          const nextI = (i + 1) % N;
+          const c1 = circlePts[i];
+          const c2 = circlePts[nextI];
+
+          const ang1 = (i / N) * Math.PI * 2;
+          const ang2 = (nextI / N) * Math.PI * 2;
+
+          const getSquarePt = (a) => {
+            const cos = Math.cos(a);
+            const sin = Math.sin(a);
+            const scale = A / Math.max(Math.abs(cos), Math.abs(sin) === 0 ? 0.0001 : Math.abs(sin));
+            return [cos * scale, sin * scale];
+          };
+
+          const sq1 = getSquarePt(ang1);
+          const sq2 = getSquarePt(ang2);
+
+          const p1 = new THREE.Vector3(sq1[0], 0, sq1[1]).applyMatrix4(dummy.matrix).toArray();
+          const p2 = new THREE.Vector3(sq2[0], 0, sq2[1]).applyMatrix4(dummy.matrix).toArray();
+          const p3 = new THREE.Vector3(c2[0], 0, c2[1]).applyMatrix4(dummy.matrix).toArray();
+          const p4 = new THREE.Vector3(c1[0], 0, c1[1]).applyMatrix4(dummy.matrix).toArray();
+
+          addQuad(p1, p2, p3, p4, f.dir);
+        }
+      } else {
+        const p1 = new THREE.Vector3(-A, 0, -A).applyMatrix4(dummy.matrix).toArray();
+        const p2 = new THREE.Vector3(A, 0, -A).applyMatrix4(dummy.matrix).toArray();
+        const p3 = new THREE.Vector3(A, 0, A).applyMatrix4(dummy.matrix).toArray();
+        const p4 = new THREE.Vector3(-A, 0, A).applyMatrix4(dummy.matrix).toArray();
+        addQuad(p1, p2, p3, p4, f.dir);
+      }
+    });
+
+    hubGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    hubGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    hubGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
     const hubMesh = new THREE.Mesh(hubGeo, mat);
     group.add(hubMesh);
 
-    const axes = [
-      { key: 'px', rot: [0, 0, -Math.PI / 2] },
-      { key: 'nx', rot: [0, 0, Math.PI / 2] },
-      { key: 'py', rot: [0, 0, 0] },
-      { key: 'ny', rot: [Math.PI, 0, 0] },
-      { key: 'pz', rot: [Math.PI / 2, 0, 0] },
-      { key: 'nz', rot: [-Math.PI / 2, 0, 0] }
-    ];
+    // ===== 4. INTERNAL SOCKET CYLINDERS & HELICAL CAM RAMPS =====
+    faces.forEach(f => {
+      const isActive = portConfig[f.key] !== false;
+      if (!isActive) return;
 
-    axes.forEach(a => {
       const portGroup = new THREE.Group();
-      if (portConfig && portConfig[a.key]) {
-        // Active port
-        const boreGeo = new THREE.CylinderGeometry(boreRadius, boreRadius, socketDepth, 24);
-        const boreMesh = new THREE.Mesh(boreGeo, darkMat);
-        boreMesh.position.y = socketDepth / 2;
-        portGroup.add(boreMesh);
+      portGroup.rotation.set(...f.rot);
 
-        const chamferGeo = new THREE.CylinderGeometry(outerRadius, boreRadius, 2, 24);
-        const chamferMesh = new THREE.Mesh(chamferGeo, mat);
-        chamferMesh.position.y = socketDepth;
-        portGroup.add(chamferMesh);
+      // Dark internal socket cylinder bore
+      const socketTubeGeo = new THREE.CylinderGeometry(boreRadius, boreRadius, socketDepth, 24, 1, true);
+      const socketTubeMesh = new THREE.Mesh(socketTubeGeo, darkMat);
+      socketTubeMesh.position.y = hubH - socketDepth / 2;
+      portGroup.add(socketTubeMesh);
 
-        // Internal helical cam ramp surfaces
-        for (let i = 0; i < 3; i++) {
-          const rampGroup = new THREE.Group();
-          const angleOffset = (i * 2 * Math.PI) / 3;
-          for (let j = 0; j < 8; j++) {
-            const arcStart = angleOffset + (j * (20 * Math.PI / 180) / 8);
-            const rise = (j / 8) * 2.5;
-            const rampSegGeo = new THREE.BoxGeometry(4.4, 3.2, 2);
-            const rampSegMesh = new THREE.Mesh(rampSegGeo, orangeMat);
-            rampSegMesh.position.set(
-              Math.cos(arcStart) * boreRadius,
-              socketDepth / 2 + rise,
-              Math.sin(arcStart) * boreRadius
-            );
-            rampSegMesh.rotation.y = -arcStart;
-            rampGroup.add(rampSegMesh);
-          }
-          portGroup.add(rampGroup);
+      // Socket bottom stop plate
+      const stopGeo = new THREE.CircleGeometry(boreRadius, 24);
+      const stopMesh = new THREE.Mesh(stopGeo, darkMat);
+      stopMesh.position.y = hubH - socketDepth;
+      stopMesh.rotation.x = Math.PI / 2;
+      portGroup.add(stopMesh);
 
-          // Detent bump
-          const detentGeo = new THREE.SphereGeometry(1.5, 8, 8);
-          const detentMesh = new THREE.Mesh(detentGeo, orangeMat);
-          detentMesh.position.set(
-            Math.cos(angleOffset + 20 * Math.PI / 180) * boreRadius,
-            socketDepth / 2 + 2.5,
-            Math.sin(angleOffset + 20 * Math.PI / 180) * boreRadius
+      // Socket mouth chamfer lip ring
+      const lipGeo = new THREE.RingGeometry(boreRadius, boreRadius + 1.2, 24);
+      const lipMesh = new THREE.Mesh(lipGeo, mat);
+      lipMesh.position.y = hubH + 0.1;
+      lipMesh.rotation.x = -Math.PI / 2;
+      portGroup.add(lipMesh);
+
+      // 3 Internal Helical Cam Ramp Surfaces (Orange) inside socket wall
+      for (let i = 0; i < 3; i++) {
+        const baseAngle = (i * Math.PI * 2) / 3;
+        const rampGroup = new THREE.Group();
+        const segCount = 10;
+        const arcAngle = (20 * Math.PI) / 180;
+        const rise = 2.5;
+
+        for (let s = 0; s < segCount; s++) {
+          const t = s / segCount;
+          const ang = baseAngle + t * arcAngle;
+          const yPos = (hubH - socketDepth + 4) + t * rise;
+
+          const segGeo = new THREE.BoxGeometry(2.0, rise / segCount + 0.4, 1.2);
+          const segMesh = new THREE.Mesh(segGeo, orangeMat);
+          segMesh.position.set(
+            Math.cos(ang) * (boreRadius - 0.5),
+            yPos,
+            Math.sin(ang) * (boreRadius - 0.5)
           );
-          portGroup.add(detentMesh);
+          segMesh.rotation.y = -ang;
+          rampGroup.add(segMesh);
         }
-      } else {
-        // Blanking cap
-        const capGeo = new THREE.CylinderGeometry(outerRadius, outerRadius, 2, 24);
-        const capMesh = new THREE.Mesh(capGeo, mat);
-        capMesh.position.y = hubSize;
-        portGroup.add(capMesh);
+
+        // Detent bump at top of ramp
+        const detentGeo = new THREE.SphereGeometry(0.8, 8, 8);
+        const detentMesh = new THREE.Mesh(detentGeo, orangeMat);
+        const endAng = baseAngle + arcAngle;
+        detentMesh.position.set(
+          Math.cos(endAng) * (boreRadius - 0.5),
+          (hubH - socketDepth + 4) + rise + 0.3,
+          Math.sin(endAng) * (boreRadius - 0.5)
+        );
+        rampGroup.add(detentMesh);
+
+        portGroup.add(rampGroup);
       }
 
-      portGroup.rotation.set(...a.rot);
       group.add(portGroup);
     });
 
@@ -478,68 +612,81 @@ export class MeshFactory {
   /**
    * Create AXILOCK End Connector
    */
-  createAxilockEndConnector(dowelDiameter, connectorColor, tabColor, showTabs) {
+  createAxilockEndConnector(dowelDiameter = 22, connectorColor = 'axilock_connector_white', tabColor = 'axilock_tab_blue', showTabs = true) {
     const group = new THREE.Group();
-    const mat = this.materials.getMaterial(connectorColor || 'connector_forest_green');
-    const tabMat = this.materials.getMaterial(tabColor || 'axilock_metal_brushed');
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const mat = this.materials.getMaterial(connectorColor || 'axilock_connector_white');
+    const tabMat = this.materials.getMaterial(tabColor || 'axilock_tab_blue');
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
 
     const dowelRadius = dowelDiameter / 2;
-    const bodyOD = dowelRadius + 4;
+    const bodyOD = dowelRadius + 1.5; // 12.5mm radius = 25mm OD for 22mm dowel
     const bodyLength = 24.0;
     const bore = dowelRadius + 0.1;
 
+    // 1. Sleek cylindrical sleeve body (Extruded along Y)
     const shape = new THREE.Shape();
     shape.absarc(0, 0, bodyOD, 0, Math.PI * 2, false);
     const holePath = new THREE.Path();
     holePath.absarc(0, 0, bore, 0, Math.PI * 2, true);
     shape.holes.push(holePath);
 
-    const extrudeSettings = { depth: bodyLength, bevelEnabled: false };
+    const extrudeSettings = { depth: bodyLength, bevelEnabled: true, bevelThickness: 0.6, bevelSize: 0.6, bevelSegments: 2 };
     const bodyGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const bodyMesh = new THREE.Mesh(bodyGeo, mat);
-    bodyMesh.rotation.x = -Math.PI / 2;
+    bodyMesh.rotation.x = -Math.PI / 2; // Orient along +Y axis (y = 0 to y = bodyLength)
     group.add(bodyMesh);
 
-    const chamferGeo = new THREE.CylinderGeometry(bodyOD - 1, bodyOD, 2, 24);
+    // 2. Lead-in chamfer at insertion end (y = bodyLength)
+    const chamferGeo = new THREE.CylinderGeometry(bodyOD - 0.8, bodyOD, 1.2, 24);
     const chamferMesh = new THREE.Mesh(chamferGeo, mat);
-    chamferMesh.position.y = bodyLength + 1;
+    chamferMesh.position.y = bodyLength + 0.6;
     group.add(chamferMesh);
 
+    // 3. Three helical locking tabs (120° apart) on outer surface near insertion end
     if (showTabs) {
       for (let i = 0; i < 3; i++) {
         const tabGroup = new THREE.Group();
-        const angleOffset = (i * 2 * Math.PI) / 3;
-        for (let j = 0; j < 10; j++) {
-          const arcStart = angleOffset + (j * (20 * Math.PI / 180) / 10);
-          const rise = (j / 10) * 2.5;
-          const tabSegGeo = new THREE.BoxGeometry(4, 3, 2);
+        const baseAngle = (i * Math.PI * 2) / 3;
+        const segCount = 10;
+        const arcAngle = (20 * Math.PI) / 180;
+        const rise = 2.5;
+
+        for (let j = 0; j < segCount; j++) {
+          const t = j / segCount;
+          const ang = baseAngle + t * arcAngle;
+          const yPos = (bodyLength - 14.0) + t * rise;
+
+          const tabSegGeo = new THREE.BoxGeometry(1.6, rise / segCount + 0.3, 1.0);
           const tabSegMesh = new THREE.Mesh(tabSegGeo, tabMat);
           tabSegMesh.position.set(
-            Math.cos(arcStart) * bodyOD,
-            bodyLength / 2 + rise,
-            Math.sin(arcStart) * bodyOD
+            Math.cos(ang) * (bodyOD + 0.3),
+            yPos,
+            Math.sin(ang) * (bodyOD + 0.3)
           );
-          tabSegMesh.rotation.y = -arcStart;
+          tabSegMesh.rotation.y = -ang;
           tabGroup.add(tabSegMesh);
         }
-        
-        const detentGeo = new THREE.SphereGeometry(1.5, 8, 8);
+
+        // Detent bump at tab tip
+        const detentGeo = new THREE.SphereGeometry(0.7, 8, 8);
         const detentMesh = new THREE.Mesh(detentGeo, tabMat);
+        const endAng = baseAngle + arcAngle;
         detentMesh.position.set(
-          Math.cos(angleOffset + 20 * Math.PI / 180) * bodyOD,
-          bodyLength / 2 + 2.5,
-          Math.sin(angleOffset + 20 * Math.PI / 180) * bodyOD
+          Math.cos(endAng) * (bodyOD + 0.3),
+          (bodyLength - 14.0) + rise + 0.2,
+          Math.sin(endAng) * (bodyOD + 0.3)
         );
         tabGroup.add(detentMesh);
-        
+
         group.add(tabGroup);
       }
     }
 
-    const screwIndicatorGeo = new THREE.CylinderGeometry(bore - 1, bore - 1, 1, 16);
+    // Screw counterbore indicator at rear face (y = 0)
+    const screwIndicatorGeo = new THREE.CircleGeometry(bore, 24);
     const screwIndicatorMesh = new THREE.Mesh(screwIndicatorGeo, darkMat);
-    screwIndicatorMesh.position.y = 0.5;
+    screwIndicatorMesh.position.y = -0.1;
+    screwIndicatorMesh.rotation.x = Math.PI / 2;
     group.add(screwIndicatorMesh);
 
     group.userData = { partType: 'axilock_end_connector' };
