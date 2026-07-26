@@ -715,8 +715,8 @@ const ALL_PRODUCTS = [
       dowelLength: { value: 300, min: 150, max: 500, step: 10, unit: 'mm', label: 'Dowel Length', group: 'Hub Configuration' },
       showCutaway: { value: false, options: [false, true], label: 'Show Internal Cutaway', group: 'Visualization' },
       showTabs: { value: true, options: [false, true], label: 'Highlight Locking Tabs', group: 'Visualization' },
-      hubColor: { value: 'axilock_hub_charcoal', options: ['axilock_hub_charcoal', 'connector_stone_grey', 'connector_matte_black'], label: 'Hub Color', group: 'Materials & Colors' },
-      connectorColor: { value: 'axilock_connector_white', options: ['axilock_connector_white', 'connector_terracotta', 'connector_forest_green', 'connector_stone_grey'], label: 'End Connector Color', group: 'Materials & Colors' },
+      hubColor: { value: 'axilock_hub_charcoal', options: ['axilock_connector_white', 'axilock_hub_charcoal', 'connector_terracotta', 'connector_forest_green', 'connector_stone_grey', 'connector_matte_black'], label: 'Hub Color', group: 'Materials & Colors' },
+      connectorColor: { value: 'axilock_connector_white', options: ['axilock_connector_white', 'connector_terracotta', 'connector_forest_green', 'connector_stone_grey', 'connector_matte_black'], label: 'End Connector Color', group: 'Materials & Colors' },
       woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Dowel Wood Finish', group: 'Materials & Colors' }
     },
     buildGraph: (p) => {

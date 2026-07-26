@@ -29,6 +29,7 @@ export class UIController {
     this.elBtnResetCam = document.getElementById('btn-reset-camera');
     this.elBtnExportDrawing = document.getElementById('btn-export-drawing');
     this.elBtnAR = document.getElementById('btn-ar');
+    this.elBtnTheme = document.getElementById('btn-theme');
     this.elAnimSlider = document.getElementById('anim-slider');
     this.elBadge = document.getElementById('view-badge');
     this.elInfo = document.getElementById('viewport-info');
@@ -37,6 +38,15 @@ export class UIController {
   }
 
   _bindEvents() {
+    if (this.elBtnTheme) {
+      let isDark = false;
+      this.elBtnTheme.addEventListener('click', () => {
+        isDark = !isDark;
+        this.elBtnTheme.innerHTML = isDark ? '🌙 Dark Studio' : '☀️ Light Studio';
+        if (this.callbacks.onThemeToggle) this.callbacks.onThemeToggle(isDark ? 'dark' : 'light');
+      });
+    }
+
     if (this.elBtnAR) {
       this.elBtnAR.addEventListener('click', () => {
         if (this.callbacks.onLaunchAR) this.callbacks.onLaunchAR();

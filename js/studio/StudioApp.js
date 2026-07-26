@@ -51,7 +51,8 @@ class StudioApp {
       onResetCamera: () => this.scene.resetCamera(),
       onAnimSliderChange: (progress) => this._onAnimSlider(progress),
       onExportDrawing: () => this._showBlueprintModal(),
-      onLaunchAR: () => this.arController.launchAR(this.scene.getProductGroup(), this.engine)
+      onLaunchAR: () => this.arController.launchAR(this.scene.getProductGroup(), this.engine),
+      onThemeToggle: (theme) => this.scene.setTheme(theme)
     });
 
     // Rebuild initial 3D model
