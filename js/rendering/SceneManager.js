@@ -28,12 +28,11 @@ export class SceneManager {
     });
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.setSize(this._container.clientWidth, this._container.clientHeight);
-    this._theme = 'light';
-    this._renderer.setClearColor(0xf0f2f5);
+    this._scene.background = new THREE.Color(0xffffff);
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this._renderer.toneMappingExposure = 1.25;
+    this._renderer.toneMappingExposure = 1.2;
     this._renderer.outputColorSpace = THREE.SRGBColorSpace;
     this._container.appendChild(this._renderer.domElement);
 
@@ -108,7 +107,7 @@ export class SceneManager {
   setTheme(themeName) {
     this._theme = themeName;
     if (themeName === 'dark') {
-      this._renderer.setClearColor(0x0c0d14);
+      this._scene.background = new THREE.Color(0x0c0d14);
       if (this._groundMat) this._groundMat.opacity = 0.35;
       if (this._grid) {
         this._scene.remove(this._grid);
@@ -118,7 +117,7 @@ export class SceneManager {
         this._scene.add(this._grid);
       }
     } else {
-      this._renderer.setClearColor(0xf0f2f5);
+      this._scene.background = new THREE.Color(0xffffff);
       if (this._groundMat) this._groundMat.opacity = 0.18;
       if (this._grid) {
         this._scene.remove(this._grid);
