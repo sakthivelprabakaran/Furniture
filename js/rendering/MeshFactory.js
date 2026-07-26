@@ -684,6 +684,57 @@ export class MeshFactory {
   }
 
   /**
+   * Helper: Generate a continuous solid ACME Thread Geometry
+   */
+  _createTrueThreadGeometry(radius, length, pitch, threadDepth, isInternal) {
+    const radialSegs = 64;
+    const heightSegs = Math.floor(length * 8); // e.g. 18 * 8 = 144
+    const geo = new THREE.CylinderGeometry(radius, radius, length, radialSegs, heightSegs, false);
+    const pos = geo.attributes.position;
+    
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      
+      const r = Math.sqrt(x*x + z*z);
+      // Skip top and bottom caps for deformation
+      if (r < radius - 0.1 && !isInternal) continue;
+      if (r > radius + 0.1 && isInternal) continue;
+      
+      const theta = Math.atan2(z, x);
+      const phase = (y / pitch) - (theta / (Math.PI * 2));
+      let p = phase - Math.floor(phase);
+      
+      // ACME Profile (Trapezoidal)
+      let profile = 0;
+      if (p < 0.1) profile = p / 0.1;
+      else if (p < 0.4) profile = 1.0;
+      else if (p < 0.5) profile = 1.0 - ((p - 0.4) / 0.1);
+      else profile = 0.0;
+      
+      // Fade out the thread at the ends
+      let fade = 1.0;
+      const fadeDist = pitch;
+      const yLocal = y + length / 2;
+      if (yLocal < fadeDist) fade = yLocal / fadeDist;
+      if (yLocal > length - fadeDist) fade = (length - yLocal) / fadeDist;
+      
+      let currentRadius = radius;
+      if (isInternal) {
+        currentRadius = radius - (threadDepth * profile * fade);
+      } else {
+        currentRadius = radius - threadDepth + (threadDepth * profile * fade);
+      }
+      
+      pos.setX(i, Math.cos(theta) * currentRadius);
+      pos.setZ(i, Math.sin(theta) * currentRadius);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
    * Create AXILOCK Female Threaded Socket Hub ("The Nut / Socket Hub")
    */
   createAxilockThreadedHub(dowelDiameter = 22, hubColor = 'axilock_hub_charcoal', portConfig = {}) {
@@ -834,9 +885,12 @@ export class MeshFactory {
       const portGroup = new THREE.Group();
       portGroup.rotation.set(...f.rot);
 
-      // Dark internal socket cylinder bore
-      const socketTubeGeo = new THREE.CylinderGeometry(boreRadius, boreRadius, socketDepth, 24, 1, true);
+      // Dark internal socket cylinder bore with TRUE ACME THREADS
+      // threadDepth = 1.2mm, pitch = 4.0mm
+      const socketTubeGeo = this._createTrueThreadGeometry(boreRadius, socketDepth, 4.0, 1.2, true);
       const socketTubeMesh = new THREE.Mesh(socketTubeGeo, darkMat);
+      // Our helper creates a cylinder centered at 0, so y ranges from -depth/2 to depth/2.
+      // We want the base at hubH - socketDepth and top at hubH.
       socketTubeMesh.position.y = hubH - socketDepth / 2;
       portGroup.add(socketTubeMesh);
 
@@ -844,247 +898,8 @@ export class MeshFactory {
       const stopGeo = new THREE.CircleGeometry(boreRadius, 24);
       const stopMesh = new THREE.Mesh(stopGeo, darkMat);
       stopMesh.position.y = hubH - socketDepth;
-      stopMesh.rotation.x = Math.PI / 2;
+      stopMesh.rotation.x = -Math.PI / 2; // Fixed normal direction to point upward
       portGroup.add(stopMesh);
-
-  /**
-   * Helper: Generate a Solid 3D Trapezoidal ACME Helical Thread Mesh
-   */
-  _createAcmeThreadGeometry(radius, length, turns = 4, toothHeight = 1.8, isInternal = false) {
-    const geo = new THREE.BufferGeometry();
-    const vertices = [];
-    const normals = [];
-
-    const stepsPerTurn = 36;
-    const totalSteps = turns * stepsPerTurn;
-    const pitch = length / turns;
-
-    const crestWidth = pitch * 0.32;
-    const rootWidth = pitch * 0.52;
-
-    function addQuad(p1, p2, p3, p4) {
-      const vA = new THREE.Vector3().subVectors(p2, p1);
-      const vB = new THREE.Vector3().subVectors(p3, p1);
-      const norm = new THREE.Vector3().crossVectors(vA, vB).normalize().toArray();
-
-      vertices.push(...p1, ...p2, ...p3);
-      normals.push(...norm, ...norm, ...norm);
-
-      vertices.push(...p1, ...p3, ...p4);
-      normals.push(...norm, ...norm, ...norm);
-    }
-
-    const rBase = isInternal ? radius : radius - toothHeight * 0.2;
-    const rTip = isInternal ? radius - toothHeight : radius + toothHeight;
-
-    for (let i = 0; i < totalSteps; i++) {
-      const t1 = i / totalSteps;
-      const t2 = (i + 1) / totalSteps;
-
-      const ang1 = t1 * Math.PI * 2 * turns;
-      const ang2 = t2 * Math.PI * 2 * turns;
-
-      const yCenter1 = 1.5 + t1 * (length - 3.0);
-      const yCenter2 = 1.5 + t2 * (length - 3.0);
-
-      const cos1 = Math.cos(ang1), sin1 = Math.sin(ang1);
-      const cos2 = Math.cos(ang2), sin2 = Math.sin(ang2);
-
-      const p1_rootBottom = [cos1 * rBase, yCenter1 - rootWidth / 2, sin1 * rBase];
-      const p1_crestBottom = [cos1 * rTip, yCenter1 - crestWidth / 2, sin1 * rTip];
-      const p1_crestTop = [cos1 * rTip, yCenter1 + crestWidth / 2, sin1 * rTip];
-      const p1_rootTop = [cos1 * rBase, yCenter1 + rootWidth / 2, sin1 * rBase];
-
-      const p2_rootBottom = [cos2 * rBase, yCenter2 - rootWidth / 2, sin2 * rBase];
-      const p2_crestBottom = [cos2 * rTip, yCenter2 - crestWidth / 2, sin2 * rTip];
-      const p2_crestTop = [cos2 * rTip, yCenter2 + crestWidth / 2, sin2 * rTip];
-      const p2_rootTop = [cos2 * rBase, yCenter2 + rootWidth / 2, sin2 * rBase];
-
-      if (isInternal) {
-        addQuad(p1_crestBottom, p2_crestBottom, p2_rootBottom, p1_rootBottom);
-        addQuad(p1_crestTop, p2_crestTop, p2_crestBottom, p1_crestBottom);
-        addQuad(p1_rootTop, p2_rootTop, p2_crestTop, p1_crestTop);
-      } else {
-        addQuad(p1_rootBottom, p2_rootBottom, p2_crestBottom, p1_crestBottom);
-        addQuad(p1_crestBottom, p2_crestBottom, p2_crestTop, p1_crestTop);
-        addQuad(p1_crestTop, p2_crestTop, p2_rootTop, p1_rootTop);
-      }
-    }
-
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    return geo;
-  }
-
-  /**
-   * Create AXILOCK Female Threaded Socket Hub ("The Nut / Socket Hub")
-   */
-  createAxilockThreadedHub(dowelDiameter = 22, hubColor = 'axilock_hub_charcoal', portConfig = {}) {
-    const group = new THREE.Group();
-    const mat = this.materials.getMaterial(hubColor || 'axilock_hub_charcoal');
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
-    const threadMat = this.materials.getMaterial('connector_stone_grey');
-
-    const dowelRadius = dowelDiameter / 2;
-    const hubH = 26.0; // Half-width = 26mm (Overall 52mm block)
-    const chamfer = 6.0;
-    const A = hubH - chamfer;
-    const boreRadius = dowelRadius + 1.2; // 12.2mm radius = 24.4mm ID female socket bore
-    const socketDepth = 20.0;
-
-    // 1. Chamfered polyhedron hub core with circular female socket holes on 6 faces
-    const hubGeo = new THREE.BufferGeometry();
-    const vertices = [];
-    const normals = [];
-    const uvs = [];
-
-    function addTriangle(p1, p2, p3, norm) {
-      vertices.push(...p1, ...p2, ...p3);
-      normals.push(...norm, ...norm, ...norm);
-      uvs.push(0, 0, 1, 0, 0.5, 1);
-    }
-
-    function addQuad(p1, p2, p3, p4, norm) {
-      addTriangle(p1, p2, p3, norm);
-      addTriangle(p1, p3, p4, norm);
-    }
-
-    // Corner truncations
-    const cornerSign = [
-      [1, 1, 1], [-1, 1, 1], [-1, -1, 1], [1, -1, 1],
-      [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]
-    ];
-    cornerSign.forEach(([sx, sy, sz]) => {
-      const v1 = [sx * A, sy * hubH, sz * A];
-      const v2 = [sx * hubH, sy * A, sz * A];
-      const v3 = [sx * A, sy * A, sz * hubH];
-      const n = new THREE.Vector3(sx, sy, sz).normalize().toArray();
-      if ((sx * sy * sz) > 0) addTriangle(v1, v2, v3, n);
-      else addTriangle(v1, v3, v2, n);
-    });
-
-    // Edge chamfers
-    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sy, sz]) => {
-      const p1 = [-A, sy * hubH, sz * A];
-      const p2 = [A, sy * hubH, sz * A];
-      const p3 = [A, sy * A, sz * hubH];
-      const p4 = [-A, sy * A, sz * hubH];
-      const n = new THREE.Vector3(0, sy, sz).normalize().toArray();
-      if (sy * sz > 0) addQuad(p1, p2, p3, p4, n);
-      else addQuad(p1, p4, p3, p2, n);
-    });
-
-    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
-      const p1 = [sx * hubH, -A, sz * A];
-      const p2 = [sx * hubH, A, sz * A];
-      const p3 = [sx * A, A, sz * hubH];
-      const p4 = [sx * A, -A, sz * hubH];
-      const n = new THREE.Vector3(sx, 0, sz).normalize().toArray();
-      if (sx * sz < 0) addQuad(p1, p2, p3, p4, n);
-      else addQuad(p1, p4, p3, p2, n);
-    });
-
-    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sy]) => {
-      const p1 = [sx * A, sy * hubH, -A];
-      const p2 = [sx * A, sy * hubH, A];
-      const p3 = [sx * hubH, sy * A, A];
-      const p4 = [sx * hubH, sy * A, -A];
-      const n = new THREE.Vector3(sx, sy, 0).normalize().toArray();
-      if (sx * sy > 0) addQuad(p1, p2, p3, p4, n);
-      else addQuad(p1, p4, p3, p2, n);
-    });
-
-    // Main faces with circular female socket holes
-    const N = 24;
-    const circlePts = [];
-    for (let i = 0; i < N; i++) {
-      const ang = (i / N) * Math.PI * 2;
-      circlePts.push([Math.cos(ang) * boreRadius, Math.sin(ang) * boreRadius]);
-    }
-
-    const faces = [
-      { dir: [0, 1, 0], rot: [0, 0, 0], key: 'py' },
-      { dir: [0, -1, 0], rot: [Math.PI, 0, 0], key: 'ny' },
-      { dir: [1, 0, 0], rot: [0, 0, -Math.PI / 2], key: 'px' },
-      { dir: [-1, 0, 0], rot: [0, 0, Math.PI / 2], key: 'nx' },
-      { dir: [0, 0, 1], rot: [Math.PI / 2, 0, 0], key: 'pz' },
-      { dir: [0, 0, -1], rot: [-Math.PI / 2, 0, 0], key: 'nz' }
-    ];
-
-    faces.forEach(f => {
-      const isActive = portConfig[f.key] !== false;
-      const dummy = new THREE.Object3D();
-      dummy.rotation.set(...f.rot);
-      dummy.position.set(f.dir[0] * hubH, f.dir[1] * hubH, f.dir[2] * hubH);
-      dummy.updateMatrix();
-
-      if (isActive) {
-        for (let i = 0; i < N; i++) {
-          const nextI = (i + 1) % N;
-          const c1 = circlePts[i];
-          const c2 = circlePts[nextI];
-          const ang1 = (i / N) * Math.PI * 2;
-          const ang2 = (nextI / N) * Math.PI * 2;
-
-          const getSquarePt = (a) => {
-            const cos = Math.cos(a);
-            const sin = Math.sin(a);
-            const scale = A / Math.max(Math.abs(cos), Math.abs(sin) === 0 ? 0.0001 : Math.abs(sin));
-            return [cos * scale, sin * scale];
-          };
-
-          const sq1 = getSquarePt(ang1);
-          const sq2 = getSquarePt(ang2);
-
-          const p1 = new THREE.Vector3(sq1[0], 0, sq1[1]).applyMatrix4(dummy.matrix).toArray();
-          const p2 = new THREE.Vector3(sq2[0], 0, sq2[1]).applyMatrix4(dummy.matrix).toArray();
-          const p3 = new THREE.Vector3(c2[0], 0, c2[1]).applyMatrix4(dummy.matrix).toArray();
-          const p4 = new THREE.Vector3(c1[0], 0, c1[1]).applyMatrix4(dummy.matrix).toArray();
-
-          addQuad(p1, p2, p3, p4, f.dir);
-        }
-      } else {
-        const p1 = new THREE.Vector3(-A, 0, -A).applyMatrix4(dummy.matrix).toArray();
-        const p2 = new THREE.Vector3(A, 0, -A).applyMatrix4(dummy.matrix).toArray();
-        const p3 = new THREE.Vector3(A, 0, A).applyMatrix4(dummy.matrix).toArray();
-        const p4 = new THREE.Vector3(-A, 0, A).applyMatrix4(dummy.matrix).toArray();
-        addQuad(p1, p2, p3, p4, f.dir);
-      }
-    });
-
-    hubGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    hubGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    hubGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-
-    const hubMesh = new THREE.Mesh(hubGeo, mat);
-    group.add(hubMesh);
-
-    // 2. Internal Female ACME Threaded Bores inside active faces
-    faces.forEach(f => {
-      const isActive = portConfig[f.key] !== false;
-      if (!isActive) return;
-
-      const portGroup = new THREE.Group();
-      portGroup.rotation.set(...f.rot);
-
-      // Dark internal socket cylinder bore
-      const socketTubeGeo = new THREE.CylinderGeometry(boreRadius, boreRadius, socketDepth, 24, 1, true);
-      const socketTubeMesh = new THREE.Mesh(socketTubeGeo, darkMat);
-      socketTubeMesh.position.y = hubH - socketDepth / 2;
-      portGroup.add(socketTubeMesh);
-
-      // Socket bottom stop plate
-      const stopGeo = new THREE.CircleGeometry(boreRadius, 24);
-      const stopMesh = new THREE.Mesh(stopGeo, darkMat);
-      stopMesh.position.y = hubH - socketDepth;
-      stopMesh.rotation.x = Math.PI / 2;
-      portGroup.add(stopMesh);
-
-      // Real Solid Trapezoidal Female ACME Thread Helix inside socket bore
-      const acmeFemaleGeo = this._createAcmeThreadGeometry(boreRadius, socketDepth, 4, 1.6, true);
-      const acmeFemaleMesh = new THREE.Mesh(acmeFemaleGeo, threadMat);
-      acmeFemaleMesh.position.y = hubH - socketDepth;
-      portGroup.add(acmeFemaleMesh);
 
       group.add(portGroup);
     });
@@ -1107,22 +922,21 @@ export class MeshFactory {
     const studRadius = dowelRadius + 1.0; // 12mm radius = 24mm OD male stud
     const studLength = 18.0;
 
-    // 1. Solid Male Thread Stud Core Cylinder (y = 0 to y = studLength = 18mm)
-    const studCylGeo = new THREE.CylinderGeometry(studRadius - 1.2, studRadius - 1.2, studLength, 24);
+    // 1. Male Threaded Stud pointing forward (y = 0 to y = studLength = 18mm)
+    // TRUE ACME THREADS for male stud. 
+    // We want a solid cylinder with threads protruding/cut.
+    // OD is studRadius, thread depth is 1.5mm, pitch is 4.0mm
+    const studCylGeo = this._createTrueThreadGeometry(studRadius, studLength, 4.0, 1.5, false);
     const studCylMesh = new THREE.Mesh(studCylGeo, mat);
+    // Cylinder is centered, move up so base is at y=0, top is at y=studLength
     studCylMesh.position.y = studLength / 2;
     group.add(studCylMesh);
 
     // Lead-in chamfer tip at front tip of stud (y = 0)
-    const chamferGeo = new THREE.CylinderGeometry(studRadius - 1.8, studRadius - 1.2, 1.5, 24);
+    const chamferGeo = new THREE.CylinderGeometry(studRadius - 1.5, studRadius, 1.5, 24);
     const chamferMesh = new THREE.Mesh(chamferGeo, mat);
     chamferMesh.position.y = 0.75;
     group.add(chamferMesh);
-
-    // Real Solid 3D Trapezoidal Male ACME Thread Helix along stud
-    const acmeMaleGeo = this._createAcmeThreadGeometry(studRadius - 1.0, studLength, 4, 1.8, false);
-    const acmeMaleMesh = new THREE.Mesh(acmeMaleGeo, threadMat);
-    group.add(acmeMaleMesh);
 
     // 2. Dowel Attachment Collar Sleeve (y = studLength to y = studLength + collarLength = 32mm)
     const shape = new THREE.Shape();
