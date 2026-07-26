@@ -39,18 +39,17 @@ const ALL_PRODUCTS = [
       const rowCount = p.gridRows;
       const bayW = p.bayWidth;
       const bayH = p.bayHeight;
-      const bayD = p.rackDepth;
+      const shelfD = p.rackDepth;
 
       const socketOffset = 22.0;
 
-      // 1. REAR WALL FRAME (Z = 0)
-      // Rear Vertical Dowels
+      // 1. VERTICAL DOWEL COLUMNS (Single 2D Plane at Z = 0)
       for (let c = 0; c <= colCount; c++) {
         const xPos = c * bayW;
         for (let r = 1; r <= rowCount; r++) {
           const yMid = (r - 0.5) * bayH;
           graph.dowelRods.push({
-            id: `rod_v_rear_c${c}_r${r}`,
+            id: `rod_v_c${c}_r${r}`,
             position: [xPos, yMid, 0],
             length: bayH - 2 * socketOffset,
             diameter: dowelDia,
@@ -59,13 +58,13 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // Rear Horizontal Dowels
+      // 2. HORIZONTAL DOWEL RAILS (Single 2D Plane at Z = 0)
       for (let r = 0; r <= rowCount; r++) {
         const yPos = r * bayH;
         for (let c = 1; c <= colCount; c++) {
           const xMid = (c - 0.5) * bayW;
           graph.dowelRods.push({
-            id: `rod_h_rear_c${c}_r${r}`,
+            id: `rod_h_c${c}_r${r}`,
             position: [xMid, yPos, 0],
             length: bayW - 2 * socketOffset,
             diameter: dowelDia,
@@ -75,125 +74,78 @@ const ALL_PRODUCTS = [
         }
       }
 
-      // 2. FRONT STRUCTURAL FRAME (Z = bayD)
-      // Front Vertical Dowels
-      for (let c = 0; c <= colCount; c++) {
-        const xPos = c * bayW;
-        for (let r = 1; r <= rowCount; r++) {
-          const yMid = (r - 0.5) * bayH;
-          graph.dowelRods.push({
-            id: `rod_v_front_c${c}_r${r}`,
-            position: [xPos, yMid, bayD],
-            length: bayH - 2 * socketOffset,
-            diameter: dowelDia,
-            material: p.woodFinish
-          });
-        }
-      }
-
-      // Front Horizontal Dowels
-      for (let r = 1; r <= rowCount; r++) {
-        const yPos = r * bayH;
-        for (let c = 1; c <= colCount; c++) {
-          const xMid = (c - 0.5) * bayW;
-          graph.dowelRods.push({
-            id: `rod_h_front_c${c}_r${r}`,
-            position: [xMid, yPos, bayD],
-            length: bayW - 2 * socketOffset,
-            diameter: dowelDia,
-            rotation: [0, 0, Math.PI / 2],
-            material: p.woodFinish
-          });
-        }
-      }
-
-      // 3. DEPTH BRIDGE ARMS (Connecting Z = 0 Rear Wall to Z = bayD Front Frame)
+      // 3. WALL MOUNT ANCHORS & 2D SLEEVE CONNECTORS (At Z = 0 Nodes)
+      // Top and bottom row nodes get Wall Anchor Flange Connectors; intermediate nodes get 2D sleeve connectors.
       for (let c = 0; c <= colCount; c++) {
         const xPos = c * bayW;
         for (let r = 0; r <= rowCount; r++) {
           const yPos = r * bayH;
-          graph.dowelRods.push({
-            id: `rod_z_c${c}_r${r}`,
-            position: [xPos, yPos, bayD / 2],
-            length: bayD - 2 * socketOffset,
-            diameter: dowelDia,
-            rotation: [Math.PI / 2, 0, 0],
-            material: p.woodFinish
-          });
-        }
-      }
+          const isWallAnchor = (r === 0 || r === rowCount); // Top and bottom ends anchor grid directly into wall studs
 
-      // 4. REAR WALL CONNECTORS (Z = 0) AND FRONT 3D JOINTS (Z = bayD)
-      for (let c = 0; c <= colCount; c++) {
-        const xPos = c * bayW;
-        for (let r = 0; r <= rowCount; r++) {
-          const yPos = r * bayH;
+          const openPorts = {
+            px: c < colCount,
+            nx: c > 0,
+            py: r < rowCount,
+            ny: r > 0,
+            pz: false
+          };
 
-          // Unified 3D Wall-Mount Connector at Z = 0 (Combines 4-Way Cross Sockets + Wall Flange Baseplate)
-          graph.wallConnectors.push({
-            id: `wall_conn_c${c}_r${r}`,
-            position: [xPos, yPos, 0],
-            diameter: dowelDia,
-            color: p.connectorColor,
-            openPorts: {
-              px: c < colCount,
-              nx: c > 0,
-              py: r < rowCount,
-              ny: r > 0,
-              pz: true // Connects to depth bridge dowel extending along +Z
-            }
-          });
-
-          // Front 3D Joint Connectors at Z = bayD
-          if (r > 0) {
-            graph.connectors.push({
-              id: `conn_front_c${c}_r${r}`,
-              type: (c === 0 || c === colCount) ? '3way' : '4way',
-              position: [xPos, yPos, bayD],
+          if (isWallAnchor) {
+            graph.wallConnectors.push({
+              id: `wall_conn_c${c}_r${r}`,
+              position: [xPos, yPos, 0],
               diameter: dowelDia,
               color: p.connectorColor,
-              openPorts: {
-                px: c < colCount,
-                nx: c > 0,
-                py: r < rowCount,
-                ny: true,
-                pz: false,
-                nz: true // Connects to depth bridge dowel extending back along -Z
-              },
+              openPorts: openPorts
+            });
+          } else {
+            graph.connectors.push({
+              id: `conn_c${c}_r${r}`,
+              type: (c === 0 || c === colCount) ? '3way' : '4way',
+              position: [xPos, yPos, 0],
+              diameter: dowelDia,
+              color: p.connectorColor,
+              openPorts: openPorts,
               cornerType: c === 0 ? 'front_left' : 'front_right'
             });
           }
         }
       }
 
-      // 5. FLOATING L-NOTCHED SHELVES (Supported on 4-Point Perimeter Dowels)
+      // 4. SURFACE-RESTING SHELF PANELS (Sitting on horizontal dowel rails extending forward along +Z)
       for (let c = 1; c <= colCount; c++) {
         const xMid = (c - 0.5) * bayW;
-        for (let r = 1; r <= rowCount; r++) {
+        for (let r = 1; r < rowCount; r++) {
           const yPos = r * bayH;
           graph.mdfShelves.push({
             id: `shelf_c${c}_r${r}`,
-            position: [xMid, yPos + dowelRad, bayD / 2],
+            position: [xMid, yPos + dowelRad + 6, shelfD / 2],
             width: bayW - 3.0,
-            depth: bayD,
+            depth: shelfD,
             thickness: 12,
-            notchSize: 40.0,
+            notchSize: 32.0,
+            dowelDiameter: dowelDia,
             material: p.shelfMaterial
           });
         }
       }
 
-      // 6. HANGING DOWEL PEGS
+      // 5. OPTIONAL COAT & HEADPHONE HANGING PEGS (Forward pegs on outer nodes)
       if (p.hasCoatPegs) {
-        for (let c = 0; c <= colCount; c++) {
+        const pegLen = 80.0;
+        for (let c = 0; c <= colCount; c += colCount) {
           const xPos = c * bayW;
-          graph.hangingPegs.push({
-            id: `coat_peg_c${c}`,
-            position: [xPos, 0, bayD + 40],
-            length: 90,
-            diameter: 18,
-            material: p.woodFinish
-          });
+          for (let r = 1; r <= rowCount; r++) {
+            const yPos = r * bayH;
+            graph.hangingPegs.push({
+              id: `peg_c${c}_r${r}`,
+              position: [xPos, yPos, pegLen / 2 + socketOffset],
+              length: pegLen,
+              diameter: dowelDia * 0.8,
+              material: p.woodFinish,
+              rotation: [Math.PI / 2, 0, 0]
+            });
+          }
         }
       }
 
