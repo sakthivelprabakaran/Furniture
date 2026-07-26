@@ -26,10 +26,10 @@ function testAxilockSystem() {
   }
 
   // -------------------------------------------------------------
-  // TEST 1: 4-Way Port Configuration (Default)
+  // TEST 1: Helical Cam-Ramp 4-Way Port Configuration
   // -------------------------------------------------------------
-  console.log('📋 Test 1: Default 4-Way Port Hub Configuration');
-  const g1 = buildGraph({ hubPorts: 4, dowelDiameter: 22 });
+  console.log('📋 Test 1: Default 4-Way Port Helical Cam-Ramp Hub Configuration');
+  const g1 = buildGraph({ mechanismType: 'helical_cam', hubPorts: 4, dowelDiameter: 22 });
 
   if (g1.axilockHubs.length !== 1) {
     console.error(`  ❌ FAILED: Expected 1 hub, found ${g1.axilockHubs.length}`);
@@ -63,7 +63,7 @@ function testAxilockSystem() {
   // TEST 2: 6-Way Port Configuration (Full Node)
   // -------------------------------------------------------------
   console.log('\n📋 Test 2: Full 6-Way Port Hub Configuration');
-  const g2 = buildGraph({ hubPorts: 6, dowelDiameter: 25 });
+  const g2 = buildGraph({ mechanismType: 'helical_cam', hubPorts: 6, dowelDiameter: 25 });
 
   if (g2.axilockEndConnectors.length !== 6 || g2.dowelRods.length !== 6 || g2.axilockScrews.length !== 6) {
     console.error(`  ❌ FAILED: 6-way config count mismatch! Connectors: ${g2.axilockEndConnectors.length}, Dowels: ${g2.dowelRods.length}, Screws: ${g2.axilockScrews.length}`);
@@ -77,7 +77,7 @@ function testAxilockSystem() {
   // -------------------------------------------------------------
   console.log('\n📋 Test 3: Multi-Diameter Parameter Support');
   [18, 22, 25].forEach(dia => {
-    const gDia = buildGraph({ hubPorts: 3, dowelDiameter: dia });
+    const gDia = buildGraph({ mechanismType: 'helical_cam', hubPorts: 3, dowelDiameter: dia });
     if (gDia.axilockHubs[0].diameter === dia && gDia.axilockEndConnectors[0].diameter === dia) {
       console.log(`  ✅ Ø${dia}mm dowel diameter correctly propagated to hub and connectors.`);
     } else {
@@ -85,6 +85,18 @@ function testAxilockSystem() {
       passedAll = false;
     }
   });
+
+  // -------------------------------------------------------------
+  // TEST 4: Threaded Bolt & Nut System Mechanism
+  // -------------------------------------------------------------
+  console.log('\n📋 Test 4: Threaded Bolt & Nut Mechanism System');
+  const gThread = buildGraph({ mechanismType: 'threaded_bolt_nut', hubPorts: 4 });
+  if (gThread.axilockThreadedHubs.length === 1 && gThread.axilockNutCollars.length === 4) {
+    console.log('  ✅ Threaded Bolt Stud Hub and female Collar Nuts generated correctly (1 hub, 4 nuts).');
+  } else {
+    console.error(`  ❌ FAILED: Threaded bolt & nut graph generation failed! Hubs: ${gThread.axilockThreadedHubs.length}, Nuts: ${gThread.axilockNutCollars.length}`);
+    passedAll = false;
+  }
 
   console.log('\n---------------------------------------------------');
   if (passedAll) {

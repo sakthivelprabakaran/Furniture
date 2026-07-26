@@ -710,6 +710,7 @@ const ALL_PRODUCTS = [
     category: 'connector_hardware',
     description: 'Interactive 3D visualization of the patentable AXILOCK modular dowel connection system with helical cam-ramp locking.',
     parameters: {
+      mechanismType: { value: 'threaded_bolt_nut', options: ['threaded_bolt_nut', 'helical_cam'], label: 'Locking Mechanism', group: 'Hub Configuration' },
       hubPorts: { value: 4, min: 2, max: 6, step: 1, unit: ' ports', label: 'Active Hub Ports', group: 'Hub Configuration' },
       dowelDiameter: { value: 22, options: [18, 22, 25], unit: 'mm', label: 'Dowel Diameter', group: 'Hub Configuration' },
       dowelLength: { value: 300, min: 150, max: 500, step: 10, unit: 'mm', label: 'Dowel Length', group: 'Hub Configuration' },
@@ -724,7 +725,9 @@ const ALL_PRODUCTS = [
         dowelRods: [],
         axilockHubs: [],
         axilockEndConnectors: [],
-        axilockScrews: []
+        axilockScrews: [],
+        axilockThreadedHubs: [],
+        axilockNutCollars: []
       };
 
       const dowelDia = p.dowelDiameter;
@@ -732,6 +735,7 @@ const ALL_PRODUCTS = [
       const dowelLen = p.dowelLength;
       const connectorLength = 24.0;
       const numPorts = p.hubPorts;
+      const mechanism = p.mechanismType || 'threaded_bolt_nut';
 
       // Port axis definitions: direction vectors and Euler rotation angles
       const allAxes = [
@@ -743,75 +747,126 @@ const ALL_PRODUCTS = [
         { key: 'nz', dir: [0, 0, -1], rot: [-Math.PI / 2, 0, 0] }
       ];
 
-      // Determine which ports are active (first N from the list)
+      // Determine which ports are active
       const activeAxes = allAxes.slice(0, numPorts);
       const portConfig = {};
       allAxes.forEach(a => portConfig[a.key] = false);
       activeAxes.forEach(a => portConfig[a.key] = true);
 
-      // Hub geometry dimensions
-      const hubH = 26.0; // Hub half-width (face is at 26mm from center)
-      const insertionDepth = 12.0; // 12mm inserted inside hub socket
+      const hubH = 26.0; // Hub half-width
 
-      // 1. Central AXILOCK Hub at origin
-      graph.axilockHubs.push({
-        id: 'axilock_hub_main',
-        position: [0, 0, 0],
-        diameter: dowelDia,
-        color: p.hubColor,
-        portConfig: portConfig,
-        showCutaway: p.showCutaway
-      });
+      if (mechanism === 'threaded_bolt_nut') {
+        // ===== MECHANISM 2: THREADED BOLT & NUT SYSTEM (REVERSED: HUB = FEMALE SOCKET, DOWEL = MALE BOLT STUD) =====
+        const socketDepth = 16.0; // Male stud screws 16mm inside female socket
+        const collarLength = 14.0;
 
-      // 2. End Connectors + Dowels + Screws for each active port
-      activeAxes.forEach((axis) => {
-        const [dx, dy, dz] = axis.dir;
-
-        // End connector center offset: front face is at (hubH - insertionDepth) = 14mm
-        const connCenterOffset = (hubH - insertionDepth) + connectorLength / 2; // 26mm from center
-        const connectorPos = [
-          dx * connCenterOffset,
-          dy * connCenterOffset,
-          dz * connCenterOffset
-        ];
-
-        graph.axilockEndConnectors.push({
-          id: `axilock_conn_${axis.key}`,
-          position: connectorPos,
-          rotation: axis.rot,
+        // 1. Female Threaded Socket Hub at origin ("The Nut Hub")
+        graph.axilockThreadedHubs.push({
+          id: 'axilock_threaded_hub_main',
+          position: [0, 0, 0],
           diameter: dowelDia,
-          color: p.connectorColor,
-          tabColor: 'axilock_tab_blue',
-          showTabs: p.showTabs
+          color: p.hubColor,
+          portConfig: portConfig
         });
 
-        // Dowel rod starts at back face of end connector (14mm + 24mm = 38mm from center)
-        const dowelStartOffset = (hubH - insertionDepth) + connectorLength; // 38mm from center
-        const effectiveDowelLen = dowelLen - insertionDepth;
-        const dowelCenterOffset = dowelStartOffset + (effectiveDowelLen - connectorLength) / 2;
-        const dowelCenter = [
-          dx * dowelCenterOffset,
-          dy * dowelCenterOffset,
-          dz * dowelCenterOffset
-        ];
+        // 2. Male Threaded Stud Dowel Caps + Dowels for each active port
+        activeAxes.forEach((axis) => {
+          const [dx, dy, dz] = axis.dir;
 
-        graph.dowelRods.push({
-          id: `axilock_dowel_${axis.key}`,
-          position: dowelCenter,
-          length: effectiveDowelLen,
+          // Cap base position: collar shoulder sits flush at (hubH - socketDepth) = 10mm from center
+          const capOffset = hubH - socketDepth; // 10mm from center
+          const capPos = [
+            dx * capOffset,
+            dy * capOffset,
+            dz * capOffset
+          ];
+
+          graph.axilockNutCollars.push({
+            id: `axilock_nut_${axis.key}`,
+            position: capPos,
+            rotation: axis.rot,
+            diameter: dowelDia,
+            color: p.connectorColor
+          });
+
+          // Dowel rod starts at back face of collar shoulder (10mm + 14mm + 14mm = 38mm from center)
+          const dowelStartOffset = capOffset + collarLength + 14.0; // 38mm from center
+          const effectiveDowelLen = dowelLen - socketDepth;
+          const dowelCenterOffset = dowelStartOffset + (effectiveDowelLen - 24.0) / 2;
+          const dowelCenter = [
+            dx * dowelCenterOffset,
+            dy * dowelCenterOffset,
+            dz * dowelCenterOffset
+          ];
+
+          graph.dowelRods.push({
+            id: `axilock_dowel_${axis.key}`,
+            position: dowelCenter,
+            length: effectiveDowelLen,
+            diameter: dowelDia,
+            rotation: axis.rot,
+            material: p.woodFinish
+          });
+        });
+      } else {
+        // ===== MECHANISM 1: HELICAL CAM-RAMP SYSTEM =====
+        const insertionDepth = 12.0;
+
+        graph.axilockHubs.push({
+          id: 'axilock_hub_main',
+          position: [0, 0, 0],
           diameter: dowelDia,
-          rotation: axis.rot,
-          material: p.woodFinish
+          color: p.hubColor,
+          portConfig: portConfig,
+          showCutaway: p.showCutaway
         });
 
-        // M4 screw inside end connector
-        graph.axilockScrews.push({
-          id: `axilock_screw_${axis.key}`,
-          position: connectorPos,
-          rotation: axis.rot,
-          length: 30
+        activeAxes.forEach((axis) => {
+          const [dx, dy, dz] = axis.dir;
+
+          const connCenterOffset = (hubH - insertionDepth) + connectorLength / 2;
+          const connectorPos = [
+            dx * connCenterOffset,
+            dy * connCenterOffset,
+            dz * connCenterOffset
+          ];
+
+          graph.axilockEndConnectors.push({
+            id: `axilock_conn_${axis.key}`,
+            position: connectorPos,
+            rotation: axis.rot,
+            diameter: dowelDia,
+            color: p.connectorColor,
+            tabColor: 'axilock_tab_blue',
+            showTabs: p.showTabs
+          });
+
+          const dowelStartOffset = (hubH - insertionDepth) + connectorLength;
+          const effectiveDowelLen = dowelLen - insertionDepth;
+          const dowelCenterOffset = dowelStartOffset + (effectiveDowelLen - connectorLength) / 2;
+          const dowelCenter = [
+            dx * dowelCenterOffset,
+            dy * dowelCenterOffset,
+            dz * dowelCenterOffset
+          ];
+
+          graph.dowelRods.push({
+            id: `axilock_dowel_${axis.key}`,
+            position: dowelCenter,
+            length: effectiveDowelLen,
+            diameter: dowelDia,
+            rotation: axis.rot,
+            material: p.woodFinish
+          });
+
+          graph.axilockScrews.push({
+            id: `axilock_screw_${axis.key}`,
+            position: connectorPos,
+            rotation: axis.rot,
+            length: 30
+          });
         });
-      });
+      }
 
       return graph;
     }

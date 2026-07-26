@@ -684,6 +684,273 @@ export class MeshFactory {
   }
 
   /**
+   * Create AXILOCK Female Threaded Socket Hub ("The Nut / Socket Hub")
+   */
+  createAxilockThreadedHub(dowelDiameter = 22, hubColor = 'axilock_hub_charcoal', portConfig = {}) {
+    const group = new THREE.Group();
+    const mat = this.materials.getMaterial(hubColor || 'axilock_hub_charcoal');
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
+    const threadMat = this.materials.getMaterial('connector_stone_grey');
+
+    const dowelRadius = dowelDiameter / 2;
+    const hubH = 26.0; // Half-width = 26mm (Overall 52mm block)
+    const chamfer = 6.0;
+    const A = hubH - chamfer;
+    const boreRadius = dowelRadius + 1.2; // 12.2mm radius = 24.4mm ID female socket bore
+    const socketDepth = 20.0;
+
+    // 1. Chamfered polyhedron hub core with circular female socket holes on 6 faces
+    const hubGeo = new THREE.BufferGeometry();
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+
+    function addTriangle(p1, p2, p3, norm) {
+      vertices.push(...p1, ...p2, ...p3);
+      normals.push(...norm, ...norm, ...norm);
+      uvs.push(0, 0, 1, 0, 0.5, 1);
+    }
+
+    function addQuad(p1, p2, p3, p4, norm) {
+      addTriangle(p1, p2, p3, norm);
+      addTriangle(p1, p3, p4, norm);
+    }
+
+    // Corner truncations
+    const cornerSign = [
+      [1, 1, 1], [-1, 1, 1], [-1, -1, 1], [1, -1, 1],
+      [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]
+    ];
+    cornerSign.forEach(([sx, sy, sz]) => {
+      const v1 = [sx * A, sy * hubH, sz * A];
+      const v2 = [sx * hubH, sy * A, sz * A];
+      const v3 = [sx * A, sy * A, sz * hubH];
+      const n = new THREE.Vector3(sx, sy, sz).normalize().toArray();
+      if ((sx * sy * sz) > 0) addTriangle(v1, v2, v3, n);
+      else addTriangle(v1, v3, v2, n);
+    });
+
+    // Edge chamfers
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sy, sz]) => {
+      const p1 = [-A, sy * hubH, sz * A];
+      const p2 = [A, sy * hubH, sz * A];
+      const p3 = [A, sy * A, sz * hubH];
+      const p4 = [-A, sy * A, sz * hubH];
+      const n = new THREE.Vector3(0, sy, sz).normalize().toArray();
+      if (sy * sz > 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+      const p1 = [sx * hubH, -A, sz * A];
+      const p2 = [sx * hubH, A, sz * A];
+      const p3 = [sx * A, A, sz * hubH];
+      const p4 = [sx * A, -A, sz * hubH];
+      const n = new THREE.Vector3(sx, 0, sz).normalize().toArray();
+      if (sx * sz < 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sy]) => {
+      const p1 = [sx * A, sy * hubH, -A];
+      const p2 = [sx * A, sy * hubH, A];
+      const p3 = [sx * hubH, sy * A, A];
+      const p4 = [sx * hubH, sy * A, -A];
+      const n = new THREE.Vector3(sx, sy, 0).normalize().toArray();
+      if (sx * sy > 0) addQuad(p1, p2, p3, p4, n);
+      else addQuad(p1, p4, p3, p2, n);
+    });
+
+    // Main faces with circular female socket holes
+    const N = 24;
+    const circlePts = [];
+    for (let i = 0; i < N; i++) {
+      const ang = (i / N) * Math.PI * 2;
+      circlePts.push([Math.cos(ang) * boreRadius, Math.sin(ang) * boreRadius]);
+    }
+
+    const faces = [
+      { dir: [0, 1, 0], rot: [0, 0, 0], key: 'py' },
+      { dir: [0, -1, 0], rot: [Math.PI, 0, 0], key: 'ny' },
+      { dir: [1, 0, 0], rot: [0, 0, -Math.PI / 2], key: 'px' },
+      { dir: [-1, 0, 0], rot: [0, 0, Math.PI / 2], key: 'nx' },
+      { dir: [0, 0, 1], rot: [Math.PI / 2, 0, 0], key: 'pz' },
+      { dir: [0, 0, -1], rot: [-Math.PI / 2, 0, 0], key: 'nz' }
+    ];
+
+    faces.forEach(f => {
+      const isActive = portConfig[f.key] !== false;
+      const dummy = new THREE.Object3D();
+      dummy.rotation.set(...f.rot);
+      dummy.position.set(f.dir[0] * hubH, f.dir[1] * hubH, f.dir[2] * hubH);
+      dummy.updateMatrix();
+
+      if (isActive) {
+        for (let i = 0; i < N; i++) {
+          const nextI = (i + 1) % N;
+          const c1 = circlePts[i];
+          const c2 = circlePts[nextI];
+          const ang1 = (i / N) * Math.PI * 2;
+          const ang2 = (nextI / N) * Math.PI * 2;
+
+          const getSquarePt = (a) => {
+            const cos = Math.cos(a);
+            const sin = Math.sin(a);
+            const scale = A / Math.max(Math.abs(cos), Math.abs(sin) === 0 ? 0.0001 : Math.abs(sin));
+            return [cos * scale, sin * scale];
+          };
+
+          const sq1 = getSquarePt(ang1);
+          const sq2 = getSquarePt(ang2);
+
+          const p1 = new THREE.Vector3(sq1[0], 0, sq1[1]).applyMatrix4(dummy.matrix).toArray();
+          const p2 = new THREE.Vector3(sq2[0], 0, sq2[1]).applyMatrix4(dummy.matrix).toArray();
+          const p3 = new THREE.Vector3(c2[0], 0, c2[1]).applyMatrix4(dummy.matrix).toArray();
+          const p4 = new THREE.Vector3(c1[0], 0, c1[1]).applyMatrix4(dummy.matrix).toArray();
+
+          addQuad(p1, p2, p3, p4, f.dir);
+        }
+      } else {
+        const p1 = new THREE.Vector3(-A, 0, -A).applyMatrix4(dummy.matrix).toArray();
+        const p2 = new THREE.Vector3(A, 0, -A).applyMatrix4(dummy.matrix).toArray();
+        const p3 = new THREE.Vector3(A, 0, A).applyMatrix4(dummy.matrix).toArray();
+        const p4 = new THREE.Vector3(-A, 0, A).applyMatrix4(dummy.matrix).toArray();
+        addQuad(p1, p2, p3, p4, f.dir);
+      }
+    });
+
+    hubGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    hubGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    hubGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+    const hubMesh = new THREE.Mesh(hubGeo, mat);
+    group.add(hubMesh);
+
+    // 2. Internal Female Threaded Bores inside active faces
+    faces.forEach(f => {
+      const isActive = portConfig[f.key] !== false;
+      if (!isActive) return;
+
+      const portGroup = new THREE.Group();
+      portGroup.rotation.set(...f.rot);
+
+      // Dark internal socket cylinder bore
+      const socketTubeGeo = new THREE.CylinderGeometry(boreRadius, boreRadius, socketDepth, 24, 1, true);
+      const socketTubeMesh = new THREE.Mesh(socketTubeGeo, darkMat);
+      socketTubeMesh.position.y = hubH - socketDepth / 2;
+      portGroup.add(socketTubeMesh);
+
+      // Socket bottom stop plate
+      const stopGeo = new THREE.CircleGeometry(boreRadius, 24);
+      const stopMesh = new THREE.Mesh(stopGeo, darkMat);
+      stopMesh.position.y = hubH - socketDepth;
+      stopMesh.rotation.x = Math.PI / 2;
+      portGroup.add(stopMesh);
+
+      // Smooth 3D Female ACME Thread Helix inside socket bore
+      const threadPoints = [];
+      const turns = 4;
+      const totalSteps = turns * 20;
+      for (let j = 0; j <= totalSteps; j++) {
+        const t = j / totalSteps;
+        const ang = t * Math.PI * 2 * turns;
+        const y = (hubH - socketDepth + 2.0) + t * (socketDepth - 4.0);
+        threadPoints.push(new THREE.Vector3(
+          Math.cos(ang) * (boreRadius - 0.4),
+          y,
+          Math.sin(ang) * (boreRadius - 0.4)
+        ));
+      }
+      const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
+      const threadGeo = new THREE.TubeGeometry(threadCurve, totalSteps, 0.8, 8, false);
+      const threadMesh = new THREE.Mesh(threadGeo, threadMat);
+      portGroup.add(threadMesh);
+
+      group.add(portGroup);
+    });
+
+    group.userData = { partType: 'axilock_threaded_hub' };
+    return group;
+  }
+
+  /**
+   * Create AXILOCK Dowel Male Threaded Stud Cap ("The Bolt Stud Cap")
+   */
+  createAxilockNutCollar(dowelDiameter = 22, connectorColor = 'axilock_connector_white') {
+    const group = new THREE.Group();
+    const mat = this.materials.getMaterial(connectorColor || 'axilock_connector_white');
+    const studMat = this.materials.getMaterial('connector_stone_grey');
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
+
+    const dowelRadius = dowelDiameter / 2;
+    const collarOD = dowelRadius + 3.5; // 14.5mm radius = 29mm OD collar
+    const collarLength = 14.0;
+    const studRadius = dowelRadius + 1.0; // 12mm radius = 24mm OD male stud
+    const studLength = 18.0;
+
+    // 1. Dowel attachment collar sleeve (Extruded ring)
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, collarOD, 0, Math.PI * 2, false);
+    const holePath = new THREE.Path();
+    holePath.absarc(0, 0, dowelRadius + 0.1, 0, Math.PI * 2, true);
+    shape.holes.push(holePath);
+
+    const extrudeSettings = { depth: collarLength, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.8, bevelSegments: 2 };
+    const bodyGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const bodyMesh = new THREE.Mesh(bodyGeo, mat);
+    bodyMesh.rotation.x = -Math.PI / 2;
+    group.add(bodyMesh);
+
+    // 2. 24 Vertical Ergonomic Knurling Ribs around collar barrel
+    const ribCount = 24;
+    for (let i = 0; i < ribCount; i++) {
+      const ang = (i / ribCount) * Math.PI * 2;
+      const ribGeo = new THREE.CylinderGeometry(0.6, 0.6, collarLength - 2, 8);
+      const ribMesh = new THREE.Mesh(ribGeo, mat);
+      ribMesh.position.set(
+        Math.cos(ang) * (collarOD + 0.2),
+        collarLength / 2,
+        Math.sin(ang) * (collarOD + 0.2)
+      );
+      group.add(ribMesh);
+    }
+
+    // 3. Male Threaded Stud extending forward from collar (y = collarLength to y = collarLength + studLength)
+    const studCylGeo = new THREE.CylinderGeometry(studRadius, studRadius, studLength, 24);
+    const studCylMesh = new THREE.Mesh(studCylGeo, studMat);
+    studCylMesh.position.y = collarLength + studLength / 2;
+    group.add(studCylMesh);
+
+    // Lead-in chamfer tip at front of stud
+    const chamferGeo = new THREE.CylinderGeometry(studRadius - 1.2, studRadius, 1.5, 24);
+    const chamferMesh = new THREE.Mesh(chamferGeo, studMat);
+    chamferMesh.position.y = collarLength + studLength + 0.75;
+    group.add(chamferMesh);
+
+    // Smooth 3D Male ACME Thread Helix along stud
+    const threadPoints = [];
+    const turns = 4;
+    const totalSteps = turns * 20;
+    for (let j = 0; j <= totalSteps; j++) {
+      const t = j / totalSteps;
+      const ang = t * Math.PI * 2 * turns;
+      const y = collarLength + 1.5 + t * (studLength - 3.0);
+      threadPoints.push(new THREE.Vector3(
+        Math.cos(ang) * studRadius,
+        y,
+        Math.sin(ang) * studRadius
+      ));
+    }
+    const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
+    const threadGeo = new THREE.TubeGeometry(threadCurve, totalSteps, 0.85, 8, false);
+    const threadMesh = new THREE.Mesh(threadGeo, studMat);
+    group.add(threadMesh);
+
+    group.userData = { partType: 'axilock_nut_collar' };
+    return group;
+  }
+
+  /**
    * Create AXILOCK M4 Screw
    */
   createAxilockM4Screw(length) {
@@ -1320,6 +1587,38 @@ export class MeshFactory {
         mesh.userData.partId = screw.id;
         mesh.userData.partType = 'axilock_screw';
         mesh.name = screw.id;
+        root.add(mesh);
+      }
+    }
+
+    if (graph.axilockThreadedHubs) {
+      for (const hub of graph.axilockThreadedHubs) {
+        const dowelDia = hub.diameter !== undefined ? hub.diameter : (hub.dowelDiameter || 22);
+        const colorMat = hub.color || hub.hubColor || 'axilock_hub_charcoal';
+        const mesh = this.createAxilockThreadedHub(dowelDia, colorMat, hub.portConfig);
+        mesh.position.set(...hub.position);
+        if (hub.rotation) {
+          mesh.rotation.set(...hub.rotation);
+        }
+        mesh.userData.partId = hub.id;
+        mesh.userData.partType = 'axilock_threaded_hub';
+        mesh.name = hub.id;
+        root.add(mesh);
+      }
+    }
+
+    if (graph.axilockNutCollars) {
+      for (const conn of graph.axilockNutCollars) {
+        const dowelDia = conn.diameter !== undefined ? conn.diameter : (conn.dowelDiameter || 22);
+        const colorMat = conn.color || conn.connectorColor || 'axilock_connector_white';
+        const mesh = this.createAxilockNutCollar(dowelDia, colorMat);
+        mesh.position.set(...conn.position);
+        if (conn.rotation) {
+          mesh.rotation.set(...conn.rotation);
+        }
+        mesh.userData.partId = conn.id;
+        mesh.userData.partType = 'axilock_nut_collar';
+        mesh.name = conn.id;
         root.add(mesh);
       }
     }

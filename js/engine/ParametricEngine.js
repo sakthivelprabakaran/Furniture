@@ -222,6 +222,22 @@ export class ParametricEngine {
       });
     }
 
+    if (this._graph.axilockThreadedHubs) {
+      bom.connectors.push({
+        name: 'AXILOCK Female Threaded Socket Hub ("The Nut / Socket Hub")',
+        spec: `${this._graph.axilockThreadedHubs[0]?.portConfig ? Object.values(this._graph.axilockThreadedHubs[0].portConfig).filter(v => v).length : 4}-Way, Ø24.4mm Female ACME Socket Bores`,
+        count: this._graph.axilockThreadedHubs.length
+      });
+    }
+
+    if (this._graph.axilockNutCollars) {
+      bom.connectors.push({
+        name: 'AXILOCK Male Threaded Stud Dowel Cap ("The Bolt Stud Cap")',
+        spec: `Ø${this._parameters.dowelDiameter || 22}mm, Ø24mm Male ACME Bolt Stud with Ergonomic Knurling`,
+        count: this._graph.axilockNutCollars.length
+      });
+    }
+
     bom.totalParts = (this._graph.dowelRods?.length || 0) +
                      (this._graph.mdfShelves?.length || 0) +
                      (this._graph.connectors?.length || 0) +
@@ -235,7 +251,9 @@ export class ParametricEngine {
                      (this._graph.jars?.length || 0) +
                      (this._graph.axilockHubs?.length || 0) +
                      (this._graph.axilockEndConnectors?.length || 0) +
-                     (this._graph.axilockScrews?.length || 0);
+                     (this._graph.axilockScrews?.length || 0) +
+                     (this._graph.axilockThreadedHubs?.length || 0) +
+                     (this._graph.axilockNutCollars?.length || 0);
 
     this._bom = bom;
   }
