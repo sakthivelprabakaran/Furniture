@@ -186,21 +186,19 @@ const ALL_PRODUCTS = [
     name: 'MODUWALL Grid — Wall-Mounted Organizer (Exact Reference Design)',
     icon: '🧱',
     category: 'wall_mounted',
-    description: 'Single 2D plane dowel system matching reference image! Features Terracotta Wall Anchor Brackets, 2D T & Cross Joints, and Coat/Headphone Hanging Pegs!',
+    description: 'Single 2D plane dowel system matching reference image! Features Terracotta Wall Anchor Brackets and 2D T & Cross Joints!',
     parameters: {
       gridColumns: { value: 3, min: 1, max: 5, step: 1, unit: ' bays', label: 'Grid Columns (Bays)', group: 'Grid Setup' },
       gridRows: { value: 3, min: 1, max: 4, step: 1, unit: ' rows', label: 'Grid Rows (Levels)', group: 'Grid Setup' },
       bayWidth: { value: 340, min: 260, max: 480, step: 10, unit: 'mm', label: 'Bay Width', group: 'Grid Setup' },
       bayHeight: { value: 300, min: 220, max: 420, step: 10, unit: 'mm', label: 'Row Height', group: 'Grid Setup' },
 
-      hasCoatPegs: { value: true, options: [false, true], label: 'Add Coat & Headphone Peg Rails', group: 'Attachments' },
-
       dowelDiameter: { value: 22, min: 20, max: 28, step: 1, unit: 'mm', label: 'Dowel Diameter', group: 'Materials & Colors' },
       woodFinish: { value: 'beech_natural', options: ['beech_natural', 'walnut_stain', 'black_stain'], label: 'Wood Dowel Finish', group: 'Materials & Colors' },
       connectorColor: { value: 'connector_terracotta', options: ['connector_terracotta', 'connector_forest_green', 'connector_stone_grey', 'connector_matte_black', 'connector_white'], label: '3D Joint & Flange Color', group: 'Materials & Colors' }
     },
     buildGraph: (p) => {
-      const graph = { dowelRods: [], mdfShelves: [], connectors: [], wallConnectors: [], wallFlanges: [], hangingPegs: [] };
+      const graph = { dowelRods: [], mdfShelves: [], connectors: [], wallConnectors: [], wallFlanges: [] };
 
       const dowelDia = p.dowelDiameter;
       const colCount = p.gridColumns;
@@ -273,25 +271,6 @@ const ALL_PRODUCTS = [
               color: p.connectorColor,
               openPorts: openPorts,
               cornerType: c === 0 ? 'front_left' : 'front_right'
-            });
-          }
-        }
-      }
-
-      // 4. COAT & HEADPHONE HANGING PEGS (Forward pegs along +Z on outer nodes)
-      if (p.hasCoatPegs) {
-        const pegLen = 85.0;
-        for (let c = 0; c <= colCount; c += colCount) {
-          const xPos = c * bayW;
-          for (let r = 1; r <= rowCount; r++) {
-            const yPos = r * bayH;
-            graph.hangingPegs.push({
-              id: `grid_peg_c${c}_r${r}`,
-              position: [xPos, yPos, pegLen / 2 + socketOffset],
-              length: pegLen,
-              diameter: dowelDia * 0.8,
-              material: p.woodFinish,
-              rotation: [Math.PI / 2, 0, 0]
             });
           }
         }

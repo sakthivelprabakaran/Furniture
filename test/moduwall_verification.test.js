@@ -87,18 +87,6 @@ function testModuwallConnections() {
     }
   }
 
-  // -------------------------------------------------------------
-  // TEST 3: Coat & Headphone Peg Toggle
-  // -------------------------------------------------------------
-  console.log('\n📋 Test 3: Coat & Headphone Peg Toggle');
-  const gPegsOff = buildGraph({ gridColumns: 3, gridRows: 3, hasCoatPegs: false });
-  if (gPegsOff.hangingPegs.length !== 0) {
-    console.error(`  ❌ FAILED: Expected 0 hanging pegs when hasCoatPegs=false, found ${gPegsOff.hangingPegs.length}`);
-    passedAll = false;
-  } else {
-    console.log('  ✅ Hanging Pegs are 100% disabled when hasCoatPegs=false.');
-  }
-
   console.log('\n----------------------------------------');
   if (passedAll) {
     console.log('🎉 ALL MODUWALL GRID UNIT TESTS PASSED PERFECTLY!');
