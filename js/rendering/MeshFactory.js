@@ -879,8 +879,7 @@ export class MeshFactory {
   createAxilockNutCollar(dowelDiameter = 22, connectorColor = 'axilock_connector_white') {
     const group = new THREE.Group();
     const mat = this.materials.getMaterial(connectorColor || 'axilock_connector_white');
-    const studMat = this.materials.getMaterial('connector_stone_grey');
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x141418, roughness: 0.85 });
+    const threadMat = this.materials.getMaterial('connector_stone_grey');
 
     const dowelRadius = dowelDiameter / 2;
     const collarOD = dowelRadius + 3.5; // 14.5mm radius = 29mm OD collar
@@ -888,7 +887,38 @@ export class MeshFactory {
     const studRadius = dowelRadius + 1.0; // 12mm radius = 24mm OD male stud
     const studLength = 18.0;
 
-    // 1. Dowel attachment collar sleeve (Extruded ring)
+    // 1. Male Threaded Stud pointing forward (y = 0 to y = studLength = 18mm)
+    const studCylGeo = new THREE.CylinderGeometry(studRadius, studRadius, studLength, 24);
+    const studCylMesh = new THREE.Mesh(studCylGeo, mat);
+    studCylMesh.position.y = studLength / 2;
+    group.add(studCylMesh);
+
+    // Lead-in chamfer tip at front tip of stud (y = 0)
+    const chamferGeo = new THREE.CylinderGeometry(studRadius - 1.5, studRadius, 1.5, 24);
+    const chamferMesh = new THREE.Mesh(chamferGeo, mat);
+    chamferMesh.position.y = 0.75;
+    group.add(chamferMesh);
+
+    // Smooth 3D Male ACME Thread Helix along stud (y = 2 to y = 16)
+    const threadPoints = [];
+    const turns = 4;
+    const totalSteps = turns * 20;
+    for (let j = 0; j <= totalSteps; j++) {
+      const t = j / totalSteps;
+      const ang = t * Math.PI * 2 * turns;
+      const y = 2.0 + t * (studLength - 4.0);
+      threadPoints.push(new THREE.Vector3(
+        Math.cos(ang) * studRadius,
+        y,
+        Math.sin(ang) * studRadius
+      ));
+    }
+    const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
+    const threadGeo = new THREE.TubeGeometry(threadCurve, totalSteps, 0.85, 8, false);
+    const threadMesh = new THREE.Mesh(threadGeo, threadMat);
+    group.add(threadMesh);
+
+    // 2. Dowel Attachment Collar Sleeve (y = studLength to y = studLength + collarLength = 32mm)
     const shape = new THREE.Shape();
     shape.absarc(0, 0, collarOD, 0, Math.PI * 2, false);
     const holePath = new THREE.Path();
@@ -898,10 +928,11 @@ export class MeshFactory {
     const extrudeSettings = { depth: collarLength, bevelEnabled: true, bevelThickness: 0.8, bevelSize: 0.8, bevelSegments: 2 };
     const bodyGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const bodyMesh = new THREE.Mesh(bodyGeo, mat);
+    bodyMesh.position.y = studLength;
     bodyMesh.rotation.x = -Math.PI / 2;
     group.add(bodyMesh);
 
-    // 2. 24 Vertical Ergonomic Knurling Ribs around collar barrel
+    // 3. 24 Vertical Ergonomic Knurling Ribs around collar barrel
     const ribCount = 24;
     for (let i = 0; i < ribCount; i++) {
       const ang = (i / ribCount) * Math.PI * 2;
@@ -909,42 +940,11 @@ export class MeshFactory {
       const ribMesh = new THREE.Mesh(ribGeo, mat);
       ribMesh.position.set(
         Math.cos(ang) * (collarOD + 0.2),
-        collarLength / 2,
+        studLength + collarLength / 2,
         Math.sin(ang) * (collarOD + 0.2)
       );
       group.add(ribMesh);
     }
-
-    // 3. Male Threaded Stud extending forward from collar (y = collarLength to y = collarLength + studLength)
-    const studCylGeo = new THREE.CylinderGeometry(studRadius, studRadius, studLength, 24);
-    const studCylMesh = new THREE.Mesh(studCylGeo, studMat);
-    studCylMesh.position.y = collarLength + studLength / 2;
-    group.add(studCylMesh);
-
-    // Lead-in chamfer tip at front of stud
-    const chamferGeo = new THREE.CylinderGeometry(studRadius - 1.2, studRadius, 1.5, 24);
-    const chamferMesh = new THREE.Mesh(chamferGeo, studMat);
-    chamferMesh.position.y = collarLength + studLength + 0.75;
-    group.add(chamferMesh);
-
-    // Smooth 3D Male ACME Thread Helix along stud
-    const threadPoints = [];
-    const turns = 4;
-    const totalSteps = turns * 20;
-    for (let j = 0; j <= totalSteps; j++) {
-      const t = j / totalSteps;
-      const ang = t * Math.PI * 2 * turns;
-      const y = collarLength + 1.5 + t * (studLength - 3.0);
-      threadPoints.push(new THREE.Vector3(
-        Math.cos(ang) * studRadius,
-        y,
-        Math.sin(ang) * studRadius
-      ));
-    }
-    const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
-    const threadGeo = new THREE.TubeGeometry(threadCurve, totalSteps, 0.85, 8, false);
-    const threadMesh = new THREE.Mesh(threadGeo, studMat);
-    group.add(threadMesh);
 
     group.userData = { partType: 'axilock_nut_collar' };
     return group;

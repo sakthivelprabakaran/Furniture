@@ -758,6 +758,7 @@ const ALL_PRODUCTS = [
       if (mechanism === 'threaded_bolt_nut') {
         // ===== MECHANISM 2: THREADED BOLT & NUT SYSTEM (REVERSED: HUB = FEMALE SOCKET, DOWEL = MALE BOLT STUD) =====
         const socketDepth = 16.0; // Male stud screws 16mm inside female socket
+        const studLength = 18.0;
         const collarLength = 14.0;
 
         // 1. Female Threaded Socket Hub at origin ("The Nut Hub")
@@ -773,7 +774,7 @@ const ALL_PRODUCTS = [
         activeAxes.forEach((axis) => {
           const [dx, dy, dz] = axis.dir;
 
-          // Cap base position: collar shoulder sits flush at (hubH - socketDepth) = 10mm from center
+          // Cap base position: male stud tip starts 10mm inside socket bore (10mm from center)
           const capOffset = hubH - socketDepth; // 10mm from center
           const capPos = [
             dx * capOffset,
@@ -789,10 +790,10 @@ const ALL_PRODUCTS = [
             color: p.connectorColor
           });
 
-          // Dowel rod starts at back face of collar shoulder (10mm + 14mm + 14mm = 38mm from center)
-          const dowelStartOffset = capOffset + collarLength + 14.0; // 38mm from center
+          // Dowel rod starts at back face of collar sleeve (42mm from center)
+          const dowelStartOffset = capOffset + studLength + collarLength; // 42mm from center
           const effectiveDowelLen = dowelLen - socketDepth;
-          const dowelCenterOffset = dowelStartOffset + (effectiveDowelLen - 24.0) / 2;
+          const dowelCenterOffset = dowelStartOffset + effectiveDowelLen / 2;
           const dowelCenter = [
             dx * dowelCenterOffset,
             dy * dowelCenterOffset,
