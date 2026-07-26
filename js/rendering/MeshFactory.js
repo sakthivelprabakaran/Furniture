@@ -388,7 +388,7 @@ export class MeshFactory {
   }
 
   /**
-   * Create AXILOCK Chamfered Polyhedron Hub Connector (Truncated Cube with Circular Socket Bores)
+   * Create AXILOCK Chamfered Polyhedron Hub Connector (Truncated Cube with Circular Socket Bores & Smooth Helical Ramps)
    */
   createAxilockHub(dowelDiameter = 22, hubColor = 'axilock_hub_charcoal', portConfig = {}, showCutaway = false) {
     const group = new THREE.Group();
@@ -427,6 +427,9 @@ export class MeshFactory {
       [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]
     ];
     cornerSign.forEach(([sx, sy, sz]) => {
+      // If cutaway mode is enabled, skip the front-top-right corner to open a clean inspection window
+      if (showCutaway && sx > 0 && sy > 0 && sz > 0) return;
+
       const v1 = [sx * A, sy * hubH, sz * A];
       const v2 = [sx * hubH, sy * A, sz * A];
       const v3 = [sx * A, sy * A, sz * hubH];
@@ -440,6 +443,7 @@ export class MeshFactory {
 
     // 2. EDGE CHAMFERS (12 Rectangular faces)
     [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sy, sz]) => {
+      if (showCutaway && sy > 0 && sz > 0) return; // Skip front-top cutaway edge
       const p1 = [-A, sy * hubH, sz * A];
       const p2 = [A, sy * hubH, sz * A];
       const p3 = [A, sy * A, sz * hubH];
@@ -450,6 +454,7 @@ export class MeshFactory {
     });
 
     [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+      if (showCutaway && sx > 0 && sz > 0) return;
       const p1 = [sx * hubH, -A, sz * A];
       const p2 = [sx * hubH, A, sz * A];
       const p3 = [sx * A, A, sz * hubH];
@@ -460,6 +465,7 @@ export class MeshFactory {
     });
 
     [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sy]) => {
+      if (showCutaway && sx > 0 && sy > 0) return;
       const p1 = [sx * A, sy * hubH, -A];
       const p2 = [sx * A, sy * hubH, A];
       const p3 = [sx * hubH, sy * A, A];
@@ -536,7 +542,7 @@ export class MeshFactory {
     const hubMesh = new THREE.Mesh(hubGeo, mat);
     group.add(hubMesh);
 
-    // ===== 4. INTERNAL SOCKET CYLINDERS & HELICAL CAM RAMPS =====
+    // ===== 4. INTERNAL SOCKET CYLINDERS & SMOOTH HELICAL CAM RAMPS =====
     faces.forEach(f => {
       const isActive = portConfig[f.key] !== false;
       if (!isActive) return;
@@ -564,42 +570,34 @@ export class MeshFactory {
       lipMesh.rotation.x = -Math.PI / 2;
       portGroup.add(lipMesh);
 
-      // 3 Internal Helical Cam Ramp Surfaces (Orange) inside socket wall
+      // 3 Smooth Continuous Helical Cam Ramp Tracks (Orange) inside socket wall
       for (let i = 0; i < 3; i++) {
         const baseAngle = (i * Math.PI * 2) / 3;
-        const rampGroup = new THREE.Group();
-        const segCount = 10;
-        const arcAngle = (20 * Math.PI) / 180;
-        const rise = 2.5;
+        const curvePoints = [];
+        const arcAngle = (25 * Math.PI) / 180;
+        const rise = 3.0;
 
-        for (let s = 0; s < segCount; s++) {
-          const t = s / segCount;
+        for (let j = 0; j <= 20; j++) {
+          const t = j / 20;
           const ang = baseAngle + t * arcAngle;
-          const yPos = (hubH - socketDepth + 4) + t * rise;
-
-          const segGeo = new THREE.BoxGeometry(2.0, rise / segCount + 0.4, 1.2);
-          const segMesh = new THREE.Mesh(segGeo, orangeMat);
-          segMesh.position.set(
-            Math.cos(ang) * (boreRadius - 0.5),
+          const yPos = (hubH - socketDepth + 3.0) + t * rise;
+          curvePoints.push(new THREE.Vector3(
+            Math.cos(ang) * (boreRadius - 0.4),
             yPos,
-            Math.sin(ang) * (boreRadius - 0.5)
-          );
-          segMesh.rotation.y = -ang;
-          rampGroup.add(segMesh);
+            Math.sin(ang) * (boreRadius - 0.4)
+          ));
         }
 
-        // Detent bump at top of ramp
-        const detentGeo = new THREE.SphereGeometry(0.8, 8, 8);
-        const detentMesh = new THREE.Mesh(detentGeo, orangeMat);
-        const endAng = baseAngle + arcAngle;
-        detentMesh.position.set(
-          Math.cos(endAng) * (boreRadius - 0.5),
-          (hubH - socketDepth + 4) + rise + 0.3,
-          Math.sin(endAng) * (boreRadius - 0.5)
-        );
-        rampGroup.add(detentMesh);
+        const helixCurve = new THREE.CatmullRomCurve3(curvePoints);
+        const rampGeo = new THREE.TubeGeometry(helixCurve, 20, 0.7, 8, false);
+        const rampMesh = new THREE.Mesh(rampGeo, orangeMat);
+        portGroup.add(rampMesh);
 
-        portGroup.add(rampGroup);
+        // Detent bump at end of helical ramp
+        const detentGeo = new THREE.SphereGeometry(1.0, 12, 12);
+        const detentMesh = new THREE.Mesh(detentGeo, orangeMat);
+        detentMesh.position.copy(curvePoints[20]);
+        portGroup.add(detentMesh);
       }
 
       group.add(portGroup);
@@ -610,7 +608,7 @@ export class MeshFactory {
   }
 
   /**
-   * Create AXILOCK End Connector
+   * Create AXILOCK End Connector (Smooth White Sleeve with Integrated Helical Locking Ribs)
    */
   createAxilockEndConnector(dowelDiameter = 22, connectorColor = 'axilock_connector_white', tabColor = 'axilock_tab_blue', showTabs = true) {
     const group = new THREE.Group();
@@ -642,43 +640,35 @@ export class MeshFactory {
     chamferMesh.position.y = bodyLength + 0.6;
     group.add(chamferMesh);
 
-    // 3. Three helical locking tabs (120° apart) on outer surface near insertion end
+    // 3. Three Smooth Continuous Helical Locking Ribs (Blue) integrated on outer barrel
     if (showTabs) {
       for (let i = 0; i < 3; i++) {
-        const tabGroup = new THREE.Group();
         const baseAngle = (i * Math.PI * 2) / 3;
-        const segCount = 10;
-        const arcAngle = (20 * Math.PI) / 180;
-        const rise = 2.5;
+        const curvePoints = [];
+        const arcAngle = (25 * Math.PI) / 180;
+        const rise = 3.0;
 
-        for (let j = 0; j < segCount; j++) {
-          const t = j / segCount;
+        for (let j = 0; j <= 20; j++) {
+          const t = j / 20;
           const ang = baseAngle + t * arcAngle;
           const yPos = (bodyLength - 14.0) + t * rise;
-
-          const tabSegGeo = new THREE.BoxGeometry(1.6, rise / segCount + 0.3, 1.0);
-          const tabSegMesh = new THREE.Mesh(tabSegGeo, tabMat);
-          tabSegMesh.position.set(
-            Math.cos(ang) * (bodyOD + 0.3),
+          curvePoints.push(new THREE.Vector3(
+            Math.cos(ang) * bodyOD,
             yPos,
-            Math.sin(ang) * (bodyOD + 0.3)
-          );
-          tabSegMesh.rotation.y = -ang;
-          tabGroup.add(tabSegMesh);
+            Math.sin(ang) * bodyOD
+          ));
         }
 
-        // Detent bump at tab tip
-        const detentGeo = new THREE.SphereGeometry(0.7, 8, 8);
-        const detentMesh = new THREE.Mesh(detentGeo, tabMat);
-        const endAng = baseAngle + arcAngle;
-        detentMesh.position.set(
-          Math.cos(endAng) * (bodyOD + 0.3),
-          (bodyLength - 14.0) + rise + 0.2,
-          Math.sin(endAng) * (bodyOD + 0.3)
-        );
-        tabGroup.add(detentMesh);
+        const helixCurve = new THREE.CatmullRomCurve3(curvePoints);
+        const tabGeo = new THREE.TubeGeometry(helixCurve, 20, 0.7, 8, false);
+        const tabMesh = new THREE.Mesh(tabGeo, tabMat);
+        group.add(tabMesh);
 
-        group.add(tabGroup);
+        // Detent bump at tab tip
+        const detentGeo = new THREE.SphereGeometry(0.9, 12, 12);
+        const detentMesh = new THREE.Mesh(detentGeo, tabMat);
+        detentMesh.position.copy(curvePoints[20]);
+        group.add(detentMesh);
       }
     }
 
