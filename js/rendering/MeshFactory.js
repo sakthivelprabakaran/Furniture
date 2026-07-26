@@ -1143,7 +1143,9 @@ export class MeshFactory {
 
     if (graph.axilockHubs) {
       for (const hub of graph.axilockHubs) {
-        const mesh = this.createAxilockHub(hub.dowelDiameter, hub.hubColor, hub.portConfig, hub.showCutaway);
+        const dowelDia = hub.diameter !== undefined ? hub.diameter : (hub.dowelDiameter || 22);
+        const colorMat = hub.color || hub.hubColor || 'axilock_hub_charcoal';
+        const mesh = this.createAxilockHub(dowelDia, colorMat, hub.portConfig, hub.showCutaway);
         mesh.position.set(...hub.position);
         if (hub.rotation) {
           mesh.rotation.set(...hub.rotation);
@@ -1157,7 +1159,9 @@ export class MeshFactory {
 
     if (graph.axilockEndConnectors) {
       for (const conn of graph.axilockEndConnectors) {
-        const mesh = this.createAxilockEndConnector(conn.dowelDiameter, conn.connectorColor, conn.tabColor, conn.showTabs);
+        const dowelDia = conn.diameter !== undefined ? conn.diameter : (conn.dowelDiameter || 22);
+        const colorMat = conn.color || conn.connectorColor || 'axilock_connector_white';
+        const mesh = this.createAxilockEndConnector(dowelDia, colorMat, conn.tabColor, conn.showTabs);
         mesh.position.set(...conn.position);
         if (conn.rotation) {
           mesh.rotation.set(...conn.rotation);
